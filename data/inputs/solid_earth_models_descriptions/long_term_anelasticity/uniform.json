@@ -1,0 +1,43 @@
+{
+    "layer_names": [
+        "MANTLE"
+    ],
+    "r_limits": [
+        3480000.0,
+        6371000.0
+    ],
+    "variable_names": [
+        "eta_m",
+        "eta_k",
+        "mu_k1",
+        "c"
+    ],
+    "crust_values": {
+        "eta_m": null,
+        "eta_k": null,
+        "mu_k1": null,
+        "c": null
+    },
+    "polynomials": {
+        "eta_m": [
+            [
+                3e21
+            ]
+        ],
+        "eta_k": [
+            [
+                "inf"
+            ]
+        ],
+        "mu_k1": [
+            [
+                0.0
+            ]
+        ],
+        "c": [
+            [
+                0.0
+            ]
+        ]
+    }
+}

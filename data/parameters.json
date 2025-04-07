@@ -1,0 +1,131 @@
+{
+    "solid_earth": {
+        "model": {
+            "use_long_term_anelasticity": true,
+            "use_short_term_anelasticity": true,
+            "use_bounded_attenuation_functions": true,
+            "homogeneous_solution": false,
+            "dynamic_term": true,
+            "inhomogeneity_gradients": false,
+            "real_crust": false,
+            "radius_unit": null,
+            "below_ICB_layers": null,
+            "below_CMB_layers": null
+        },
+        "frequency_discretization": {
+            "period_min_year": 1e-1,
+            "period_max_year": 1e6,
+            "n_frequency_0": 30,
+            "max_tol": 0.05,
+            "decimals": 2
+        },
+        "degree_discretization": {
+            "steps": [
+                1,
+                2,
+                5
+            ],
+            "thresholds": [
+                1,
+                20,
+                40,
+                100
+            ]
+        },
+        "numerical_parameters": {
+            "spline_number": 10,
+            "spline_degree": 1,
+            "n_max_for_sub_CMB_integration": 35,
+            "minimal_radius": 1e3,
+            "method": "DOP853",
+            "atol": 1e-14,
+            "rtol": 1e-11,
+            "t_eval": null
+        },
+        "options": {
+            "compute_Green": true,
+            "load_description": false,
+            "model_id": null,
+            "save": true,
+            "overwrite_descriptions": false
+        }
+    },
+    "load": {
+        "save_options": {
+            "json_harmonics": {
+                "all": true,
+                "step_1": false,
+                "step_2": false,
+                "step_3": false,
+                "step_4": false,
+                "step_5": false,
+                "inversion_components": false
+            },
+            "binary_harmonics": {
+                "all": true,
+                "step_1": false,
+                "step_2": false,
+                "step_3": false,
+                "step_4": false,
+                "step_5": false,
+                "inversion_components": false
+            }
+        },
+        "model": {
+            "numerical_parameters": {
+                "leakage_correction_iterations": 1,
+                "renormalize_recent_trend": true,
+                "initial_past_trend_factor": 1.22,
+                "anti_Gibbs_effect_factor": 0,
+                "spline_time_years": 50,
+                "initial_plateau_time_years": 2000,
+                "signal_threshold": 12.0,
+                "signal_threshold_past": 6.0,
+                "mean_signal_threshold": null,
+                "mean_signal_threshold_past": null,
+                "ddk_filter_level": 5,
+                "ocean_mask": "IMERG_land_sea_mask.nc",
+                "continents": "geopandas-continents.zip",
+                "buffer_distance": 300,
+                "first_year_for_trend": 2003,
+                "last_year_for_trend": 2022,
+                "past_trend_error": 1e-3
+            },
+            "pole": {
+                "use": true,
+                "file": "pole",
+                "mean_pole_convention": "IERS_2018_update",
+                "case": "mean",
+                "pole_secular_term_trend_start_date": 1900,
+                "pole_secular_term_trend_end_date": 1978,
+                "ramp": false,
+                "filter_wobble": true,
+                "phi_constant": true,
+                "remove_pole_secular_trend": false,
+                "remove_mean_pole": true,
+                "wobble_filtering_kernel_length": 50
+            },
+            "history": {
+                "file": "Frederikse/global_basin_timeseries.csv",
+                "start_date": 1900,
+                "case": "mean"
+            },
+            "LIA": {
+                "use": false,
+                "end_date": 1400,
+                "time_years": 100,
+                "amplitude_effect": 0.25
+            },
+            "signature": {
+                "opposite_load_on_continents": false,
+                "n_max": 88,
+                "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+            },
+            "options": {
+                "compute_residuals": false,
+                "invert_for_J2": false,
+                "compute_displacements": true
+            }
+        }
+    }
+}

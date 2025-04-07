@@ -1,0 +1,26 @@
+### Data supplement for 'The causes of sea-level rise since 1900'
+(c) 2020 All Rights Reserved
+
+Authors: Thomas Frederikse, Felix Landerer, Lambert Caron, Surendra Adhikari, David Parkes, Vincent W. Humphrey, Soenke Dangendorf, Peter Hogarth, Laure Zanna, Lijing Cheng, Yun-Hao Wu
+
+### PLEASE CITE THE APPROPRIATE PAPERS WHEN USING THIS DATA ###
+Please cite 'The causes of sea-level rise since 1900' when using this data set. However, most of the data heavily relies on previous work, and please acknowledge that work by citing the original sources of the data. The main text and materials and methods section of 'The causes of sea-level rise since 1900' contains the full list of sources of all the data.
+### PLEASE CHECK THIS CAREFULLY! ###
+
+This data supplement contains the following files:
+global_basin_timeseries.xlsx	Global-mean and basin-mean time series of sea level and the individual contributing processes
+region_info.xlsx				List of all tide-gauge stations and VLM estimates used for each region
+
+GMSL_ensembles.nc				All 5000 ensemble members of GMSL and the contributing processes. The variable 'likelihood' provides the normalized likelihood of each ensemble member.
+
+                              - Spatial patterns in relative sea level and solid-Earth deformation and the standard deviation due to each barystatic process are provided for each process individually -
+AIS.nc		                    Antarctic Ice Sheet
+GrIS.nc		                    Greenland Ice Sheet
+glac.nc                         Glaciers (excluding Greenland periphery)
+tws.nc                          Terrestrial Water Storage
+total.nc                        All barystatic processes combined
+
+steric.nc                       Mean and standard deviation (1957-2018) of the steric anomalies (thermo- and halosteric)
+
+The Python scripts to process the data can be found in the Budget_20c directory. Note that this set of scripts relies on many external libraries, not all of which are publicly available, such as the elastic sea-level equation solver. 
+The GMT scripts used to make some of the plots can be found in the Plots directory. You can download and build GMT from https://www.generic-mapping-tools.org/
