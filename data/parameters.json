@@ -4,13 +4,11 @@
             "use_long_term_anelasticity": true,
             "use_short_term_anelasticity": true,
             "use_bounded_attenuation_functions": true,
-            "homogeneous_solution": false,
             "dynamic_term": true,
-            "inhomogeneity_gradients": false,
             "real_crust": false,
             "radius_unit": null,
-            "below_ICB_layers": null,
-            "below_CMB_layers": null
+            "below_icb_layers": null,
+            "below_cmb_layers": null
         },
         "frequency_discretization": {
             "period_min_year": 1e-1,
@@ -35,7 +33,7 @@
         "numerical_parameters": {
             "spline_number": 10,
             "spline_degree": 1,
-            "n_max_for_sub_CMB_integration": 35,
+            "n_max_for_sub_cmb_integration": 35,
             "minimal_radius": 1e3,
             "method": "DOP853",
             "atol": 1e-14,
@@ -44,10 +42,10 @@
         },
         "options": {
             "compute_Green": true,
-            "load_description": false,
+            "load_numerical_model": false,
             "model_id": null,
             "save": true,
-            "overwrite_descriptions": false
+            "overwrite_model": false
         }
     },
     "load": {
@@ -110,7 +108,7 @@
                 "start_date": 1900,
                 "case": "mean"
             },
-            "LIA": {
+            "lia": {
                 "use": false,
                 "end_date": 1400,
                 "time_years": 100,

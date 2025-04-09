@@ -35,15 +35,13 @@ def lambda_0_computing(rho_0: ndarray, v_p: ndarray, mu_0: ndarray) -> ndarray:
     return rho_0 * v_p**2 - 2 * mu_0
 
 
-def g_0_computing(
-    x: ndarray, pi_times_g: float, rho_0: ndarray, g_0_inf: float, spline_number: int
-) -> ndarray:
+def g_0_computing(x: ndarray, rho_0: ndarray, g_0_inf: float, spline_number: int) -> ndarray:
     """
     Integrates the internal mass GM to get gravitational acceleration g.
     """
 
     # Trapezoidal rule integral method for GM = integral(rho_0 G dV).
-    g_dv_spherical = 4.0 / 3.0 * pi_times_g * diff(x**3)
+    g_dv_spherical = 4.0 / 3.0 * diff(x**3)
     mean_rho = convolve(a=rho_0, v=[0.5, 0.5])[1:-1]
     dgm_0 = zeros(shape=spline_number)
     dgm_0[0] = g_0_inf * x[0] ** 2

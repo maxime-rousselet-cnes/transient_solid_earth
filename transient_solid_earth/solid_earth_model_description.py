@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from scipy import interpolate
 
 from .database import save_base_model
-from .description_layer import DescriptionLayer
+from .model_layer import ModelLayer
 from .paths import SolidEarthModelPart, solid_earth_model_descriptions_path
 
 
@@ -103,14 +103,14 @@ class SolidEarthModelDescription:
 
         save_base_model(obj=self.__dict__, name=name, path=path)
 
-    def build_description_layers_list(
+    def build_model_layer_list(
         self, radius_unit: float, spline_number: int, real_crust: bool
-    ) -> list[DescriptionLayer]:
+    ) -> list[ModelLayer]:
         """
         Constructs the layers of an Earth description given model polynomials.
         """
 
-        description_layers = []
+        model_layers = []
         for r_inf, r_sup, layer_name, layer_polynomials in zip(
             self.r_limits[:-1],
             self.r_limits[1:],
@@ -123,8 +123,8 @@ class SolidEarthModelDescription:
                 for i in range(len(self.layer_names))
             ],
         ):
-            description_layers += [
-                self.build_description_layer(
+            model_layers += [
+                self.build_model_layer(
                     layer_parameters=LayerParameters(
                         r_inf=r_inf,
                         r_sup=r_sup,
@@ -136,15 +136,15 @@ class SolidEarthModelDescription:
                     real_crust=real_crust,
                 )
             ]
-        return description_layers
+        return model_layers
 
-    def build_description_layer(
+    def build_model_layer(
         self,
         layer_parameters: LayerParameters,
         radius_unit: float,
         spline_number: int,
         real_crust: bool,
-    ) -> DescriptionLayer:
+    ) -> ModelLayer:
         """
         Constructs a layer of an Earth description given its model polynomials.
         """
@@ -153,7 +153,7 @@ class SolidEarthModelDescription:
             numpy.linspace(layer_parameters.r_inf, layer_parameters.r_sup, spline_number)
             / radius_unit
         )
-        return DescriptionLayer(
+        return ModelLayer(
             name=layer_parameters.layer_name,
             x_inf=x[0],
             x_sup=x[-1],

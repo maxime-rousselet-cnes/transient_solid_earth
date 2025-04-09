@@ -49,11 +49,7 @@ class SolidEarthModelParameters(BaseModel):
     """
 
     options: SolidEarthModelOptionParameters
-    homogeneous_solution: (
-        bool  # Whether to use analytical solution for homogeneous sphere at r ~= 0 km or not.
-    )
     dynamic_term: bool  # Whether to use omega^2 terms or not.
-    inhomogeneity_gradients: bool  # Wheter to use lambda_prime an mu_prime terms or not.
     real_crust: (
         Optional[
             bool
@@ -99,7 +95,7 @@ class SolidEarthNumericalParameters(BaseModel):
 
     spline_number: int  # Should be >= max(2, 1 + polynomials degree).
     spline_degree: int  # Should be >= 0.
-    n_max_for_sub_CMB_integration: (
+    n_max_for_sub_cmb_integration: (
         int  # Maximal degree for integration under the Core-Mantle Boundary.
     )
     minimal_radius: float  # r ~= 0 km exact definition (m).
@@ -115,10 +111,10 @@ class SolidEarthOptionParameters(BaseModel):
     """
 
     compute_Green: bool
-    load_description: bool
+    load_numerical_model: bool
     model_id: Optional[str]
     save: bool
-    overwrite_descriptions: bool
+    overwrite_model: bool
 
 
 class SolidEarthParameters(BaseModel):
@@ -249,7 +245,7 @@ class LoadNumericalModelParameters(BaseModel):
     numerical_parameters: LoadModelNumericalParameters
     pole: LoadModelPoleParameters
     history: LoadModelHistoryParameters
-    LIA: LoadModelLIAParameters
+    lia: LoadModelLIAParameters
     signature: LoadModelSpatialSignatureParameters
     options: LoadModelOptionParameters
 

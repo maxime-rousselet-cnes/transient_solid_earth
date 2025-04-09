@@ -9,7 +9,7 @@ from numpy import array, inf, ndarray
 
 from .constants import DEFAULT_MODELS
 from .database import load_base_model, save_base_model
-from .description_layer import DescriptionLayer
+from .model_layer import ModelLayer
 from .parameters import SolidEarthParameters
 from .paths import (
     SolidEarthModelPart,
@@ -28,12 +28,14 @@ class SolidEarthNumericalModel:
     model_id: Optional[str]
     model_filename: Optional[str]
     model_part: Optional[SolidEarthModelPart]
+    x_cmb: Optional[float]
+    period_unit: Optional[float]
 
     # Attribute to memorize parameters.
     solid_earth_parameters: SolidEarthParameters
 
     # Actual model's description.
-    description_layers: list[DescriptionLayer]
+    model_layers: list[ModelLayer]
 
     def __init__(
         self,
@@ -57,12 +59,16 @@ class SolidEarthNumericalModel:
         self.solid_earth_parameters = solid_earth_parameters
 
         # Initializes description layers as empty.
-        self.description_layers = []
+        self.model_layers = []
+
+        # Defined in sub-classes when necessary.
+        self.x_cmb = None
+        self.period_unit = None
 
     def build(
         self,
         solid_earth_model_part: SolidEarthModelPart,
-        overwrite_description: bool = False,
+        overwrite_model: bool = False,
         save: bool = True,
     ):
         """
@@ -75,7 +81,7 @@ class SolidEarthNumericalModel:
         )
 
         # Gets layers descriptions.
-        self.description_layers = model.build_description_layers_list(
+        self.model_layers = model.build_model_layer_list(
             radius_unit=self.solid_earth_parameters.model.radius_unit,
             spline_number=self.solid_earth_parameters.numerical_parameters.spline_number,
             real_crust=self.solid_earth_parameters.model.real_crust,
@@ -83,70 +89,68 @@ class SolidEarthNumericalModel:
 
         # Eventually saves.
         if save:
-            self.save(overwrite_description=overwrite_description)
+            self.save(overwrite_model=overwrite_model)
 
     def load(self) -> None:
         """
-        Loads a Description instance with correctly formatted fields.
+        Loads a SolidEarthNumericalModel instance with correctly formatted fields.
         """
 
-        # Gets raw description.
-        description_dict: dict = load_base_model(name=self.model_id, path=self.get_path())
+        # Gets raw numerical model.
+        numerical_model_dict: dict = load_base_model(name=self.model_id, path=self.get_path())
         self.model_part = (
             solid_earth_full_numerical_models_path
-            if description_dict["model_part"] is None
-            else SolidEarthModelPart(description_dict["model_part"])
+            if numerical_model_dict["model_part"] is None
+            else SolidEarthModelPart(numerical_model_dict["model_part"])
         )
 
         # Formats attributes.
-        for key, value in description_dict.items():
+        for key, value in numerical_model_dict.items():
             setattr(self, key, value)
 
         # Formats layers.
-        for i_layer, layer in enumerate(description_dict["description_layers"]):
-            self.description_layers[i_layer] = DescriptionLayer(**layer)
+        for i_layer, layer in enumerate(numerical_model_dict["model_layers"]):
+            self.model_layers[i_layer] = ModelLayer(**layer)
             splines: dict[str, tuple] = layer["splines"]
 
             for variable_name, spline in splines.items():
 
                 # Handles infinite values, as strings in files but as inf float for computing.
                 if not isinstance(spline[0], list) and spline[0] == "inf":
-                    self.description_layers[i_layer].splines[variable_name] = (
+                    self.model_layers[i_layer].splines[variable_name] = (
                         inf,
                         inf,
                         0,
                     )
                 else:
                     spline = (
-                        array(object=self.description_layers[i_layer].splines[variable_name][0]),
-                        array(object=self.description_layers[i_layer].splines[variable_name][1]),
-                        self.description_layers[i_layer].splines[variable_name][2],
+                        array(object=self.model_layers[i_layer].splines[variable_name][0]),
+                        array(object=self.model_layers[i_layer].splines[variable_name][1]),
+                        self.model_layers[i_layer].splines[variable_name][2],
                     )
                     # Formats every polynomial spline as a scipy polynomial spline.
-                    self.description_layers[i_layer].splines[variable_name] = spline
+                    self.model_layers[i_layer].splines[variable_name] = spline
 
-    def save(self, overwrite_description: bool = True) -> None:
+    def save(self, overwrite_model: bool = True) -> None:
         """
-        Saves the Description instance in a (.JSON) file.
+        Saves the SolidEarthNumericalModel instance in a (.JSON) file.
         """
 
         path = self.get_path()
 
-        if not (path.joinpath(self.model_id + ".json").is_file() and not overwrite_description):
+        if not (path.joinpath(self.model_id + ".json").is_file() and not overwrite_model):
             self_dict = self.__dict__
             self_dict["model_part"] = None if self.model_part is None else self.model_part.value
-            layer: DescriptionLayer
+            layer: ModelLayer
 
             # Converts Infinite values to strings.
-            for i_layer, layer in enumerate(self_dict["description_layers"]):
+            for i_layer, layer in enumerate(self_dict["model_layers"]):
                 splines: dict[str, tuple] = layer.splines
                 for variable_name, spline in splines.items():
                     if not isinstance(spline[0], ndarray) and spline[0] == inf:
-                        description_layer: DescriptionLayer = self_dict["description_layers"][
-                            i_layer
-                        ]
-                        description_layer.splines[variable_name] = ("inf", "inf", 0)
-                        self_dict["description_layers"][i_layer] = description_layer
+                        model_layer: ModelLayer = self_dict["model_layers"][i_layer]
+                        model_layer.splines[variable_name] = ("inf", "inf", 0)
+                        self_dict["model_layers"][i_layer] = model_layer
 
             # Saves as basic type.
             save_base_model(
@@ -156,11 +160,11 @@ class SolidEarthNumericalModel:
             )
 
             # Convert back if needed.
-            for i_layer, layer in enumerate(self.description_layers):
+            for i_layer, layer in enumerate(self.model_layers):
                 splines: dict[str, tuple] = layer.splines
                 for variable_name, spline in splines.items():
                     if not isinstance(spline[0], ndarray) and spline[0] == "inf":
-                        self.description_layers[i_layer].splines[variable_name] = (
+                        self.model_layers[i_layer].splines[variable_name] = (
                             inf,
                             inf,
                             0,

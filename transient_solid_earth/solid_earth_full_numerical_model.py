@@ -1,5 +1,5 @@
 """
-Contins both the elastic and the anelastic models informations, preprocessed.
+Contains both the elastic and the anelastic models informations, preprocessed.
 The variables of this preprocessed class are still independent on frequency.
 """
 
@@ -9,7 +9,7 @@ import numpy
 from scipy import interpolate
 
 from .constants import ASYMPTOTIC_MU_RATIO_DECIMALS, LAYER_DECIMALS, SECONDS_PER_YEAR
-from .description_layer import DescriptionLayer
+from .model_layer import ModelLayer
 from .parameters import SolidEarthParameters, load_parameters
 from .rheological_formulas import find_tau_m, mu_k_computing
 from .separators import (
@@ -22,11 +22,11 @@ from .solid_earth_model_description import SolidEarthModelPart
 from .solid_earth_numerical_model import SolidEarthNumericalModel
 
 
-def anelasticity_description_id_from_part_names(
+def solid_earth_full_numerical_model_id_from_part_names(
     elasticity_name: str, long_term_anelasticity_name: str, short_term_anelasticity_name: str
 ) -> str:
     """
-    Builds an id for an anelasticity description given the names of its components.
+    Builds an id for a solid Earth full numerical model given the names of its components.
     """
     return SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR.join(
         (
@@ -42,8 +42,7 @@ def anelasticity_description_id_from_part_names(
 
 class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
     """
-    Describes the integration constants and all layer model descriptions, including anelastic
-    parameters.
+    Describes the integration constants and all layer models, including anelastic parameters.
     """
 
     # Proper fields.
@@ -51,22 +50,13 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
     viscosity_unit: float
     variable_values_per_layer: list[dict[str, numpy.ndarray]]
 
-    #  Fields also present in the elasticity description, but may differ if it is loaded.
-    x_cmb: float
-    period_unit: float
-    pi_times_g: float
-
-    # Different parts descriptions.
-    elasticity_model_name: str
-    long_term_anelasticity_model_name: str
-    short_term_anelasticity_model_name: str
-    elasticity_description: str  # Unitless.
-    anelasticicty_description: str  # With units.
-    attenuation_description: str  # With units.
+    elasticity_model: str  # Unitless.
+    long_term_anelasticity_model: str  # With units.
+    short_term_anelasticity_model: str  # With units.
 
     def load(self):
         """
-        Loads an Anelasticity Description instance with correctly formatted fields.
+        Loads a SolidEarthFullNumericalModel instance with correctly formatted fields.
         """
         super().load()
 
@@ -80,11 +70,10 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             for layer_values in layer_values_list
         ]
 
-    def save(self, overwrite_description: bool = True) -> None:
+    def save(self, overwrite_model: bool = True) -> None:
         """
         Replace carrefully infinite values by strings in proper fields for convenient (.JSON)
-        writing, then save and replace
-        back by infinite values.
+        writing, then save and replace back by infinite values.
         """
 
         # Replace infinite values by strings.
@@ -96,7 +85,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
                     )
 
         # Saves to (.JSON) file.
-        super().save(overwrite_description=overwrite_description)
+        super().save(overwrite_model=overwrite_model)
 
         # Replace back strings by infinite values.
         for i_layer, variable_values in enumerate(self.variable_values_per_layer):
@@ -120,7 +109,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             model_id=(
                 solid_earth_parameters.options.model_id
                 if not (solid_earth_parameters.options.model_id is None)
-                else anelasticity_description_id_from_part_names(
+                else solid_earth_full_numerical_model_id_from_part_names(
                     elasticity_name=elasticity_name,
                     long_term_anelasticity_name=long_term_anelasticity_name,
                     short_term_anelasticity_name=short_term_anelasticity_name,
@@ -128,19 +117,19 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             ),
         )
 
-        # Eventually loads already preprocessed anelasticity description...
+        # Eventually loads already preprocessed full model...
         if (
-            solid_earth_parameters.options.load_description
+            solid_earth_parameters.options.load_numerical_model
             and self.get_path().joinpath(self.model_id + ".json").is_file()
         ):
 
             self.load()
 
-        # ... or builds the description.
+        # ... or builds the model.
         else:
 
-            # Initializes all model description parts.
-            description_parts: dict[
+            # Initializes all 3 numerical model parts.
+            model_parts: dict[
                 SolidEarthModelPart, SolidEarthNumericalModel | SolidEarthElasticNumericalModel
             ] = {}
             part_names: dict[SolidEarthModelPart, str] = {
@@ -155,75 +144,69 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
 
                 # Initializes.
                 if solid_earth_model_part == SolidEarthModelPart.ELASTICITY:
-                    description_parts[solid_earth_model_part] = SolidEarthElasticNumericalModel(
+                    model_parts[solid_earth_model_part] = SolidEarthElasticNumericalModel(
                         solid_earth_parameters=solid_earth_parameters,
                         model_id=elasticity_name,
                         model_filename=elasticity_name,
                     )
                 else:
-                    description_parts[solid_earth_model_part] = SolidEarthNumericalModel(
+                    model_parts[solid_earth_model_part] = SolidEarthNumericalModel(
                         solid_earth_parameters=solid_earth_parameters,
                         model_id=part_name,
                         model_filename=part_name,
                         solid_earth_model_part=solid_earth_model_part,
                     )
 
-                # Eventually loads the model description part ...
-                if (
-                    not solid_earth_parameters.options.overwrite_descriptions
-                ) and description_parts[solid_earth_model_part].get_path().joinpath(
-                    description_parts[solid_earth_model_part].model_id
-                ).is_file():
+                # Eventually loads the model part ...
+                if (not solid_earth_parameters.options.overwrite_model) and model_parts[
+                    solid_earth_model_part
+                ].get_path().joinpath(model_parts[solid_earth_model_part].model_id).is_file():
 
-                    description_parts[solid_earth_model_part].load()
+                    model_parts[solid_earth_model_part].load()
 
                 # ... or builds it.
                 else:
-                    description_parts[solid_earth_model_part].build(
+                    model_parts[solid_earth_model_part].build(
                         model_part=solid_earth_model_part,
-                        overwrite_description=True,
+                        overwrite_model=True,
                         save=solid_earth_parameters.options.save,
                     )
 
-            # Updates fields from elasticity description.
-            self.x_cmb = description_parts[SolidEarthModelPart.ELASTICITY].x_cmb
-            self.period_unit = description_parts[SolidEarthModelPart.ELASTICITY].period_unit
-            self.pi_times_g = description_parts[SolidEarthModelPart.ELASTICITY].pi_times_g
+            # Updates fields from elasticity model.
+            self.x_cmb = model_parts[SolidEarthModelPart.ELASTICITY].x_cmb
 
             # Updates new fields.
             self.viscosity_unit = (
-                description_parts[SolidEarthModelPart.ELASTICITY].density_unit
+                model_parts[SolidEarthModelPart.ELASTICITY].density_unit
                 * self.solid_earth_parameters.model.radius_unit**2
                 / self.period_unit
             )
             self.elasticity_unit = self.viscosity_unit / self.period_unit
 
-            # Builds common description layers.
-            self.merge_descriptions(description_parts=description_parts)
+            # Builds common model layers.
+            self.merge_models(model_parts=model_parts)
 
             # Computes explicit variable values for incoming lambda and mu complex computings.
             self.variable_values_per_layer = self.compute_variable_values()
 
-            # Saves resulting anelasticity description in a (.JSON) file.
+            # Saves resulting full model in a (.JSON) file.
             if solid_earth_parameters.options.save:
-                self.save(
-                    overwrite_description=solid_earth_parameters.options.overwrite_descriptions
-                )
+                self.save(overwrite_model=solid_earth_parameters.options.overwrite_model)
 
-    def merge_descriptions(
+    def merge_models(
         self,
-        description_parts: dict[
+        model_parts: dict[
             SolidEarthModelPart, SolidEarthNumericalModel | SolidEarthElasticNumericalModel
         ],
     ):
         """
-        Merges all model description parts with unitless variables only.
+        Merges all model parts with unitless variables only.
         """
 
         # Initializes with Core elastic and liquid layers.
-        self.description_layers = description_parts[
-            SolidEarthModelPart.ELASTICITY
-        ].description_layers[: self.solid_earth_parameters.model.below_cmb_layers]
+        self.model_layers = model_parts[SolidEarthModelPart.ELASTICITY].model_layers[
+            : self.solid_earth_parameters.model.below_cmb_layers
+        ]
 
         # Initializes accumulators.
         x_inf: float = self.x_cmb
@@ -240,8 +223,8 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             # Checks which layer ends first.
             x_sup_per_part: dict[SolidEarthModelPart, float] = {
                 model_part: numpy.round(
-                    a=description_parts[model_part]
-                    .description_layers[layer_indices_per_part[model_part]]
+                    a=model_parts[model_part]
+                    .model_layers[layer_indices_per_part[model_part]]
                     .x_sup,
                     decimals=LAYER_DECIMALS,
                 )
@@ -250,12 +233,12 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             x_sup: float = numpy.min([value for _, value in x_sup_per_part.items()])
 
             # Updates.
-            self.description_layers += [
+            self.model_layers += [
                 self.merge_layers(
                     x_inf=x_inf,
                     x_sup=x_sup,
                     layers_per_part={
-                        model_part: description_parts[model_part].description_layers[
+                        model_part: model_parts[model_part].model_layers[
                             layer_indices_per_part[model_part]
                         ]
                         for model_part in SolidEarthModelPart
@@ -272,15 +255,15 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         self,
         x_inf: float,
         x_sup: float,
-        layers_per_part: dict[SolidEarthModelPart, DescriptionLayer],
-    ) -> DescriptionLayer:
+        layers_per_part: dict[SolidEarthModelPart, ModelLayer],
+    ) -> ModelLayer:
         """
-        Merges elasticity, anelasticity, and attenuation description layers with unitless variables
-        only.
+        Merges elasticity, short-term anelasticity, and long-term anelasticity model layers with
+        unitless variables only.
         """
 
         # Creates corresponding minimal length layer with elasticity variables.
-        description_layer = DescriptionLayer(
+        model_layer = ModelLayer(
             name=LAYER_NAMES_SEPARATOR.join((layer.name for _, layer in layers_per_part.items())),
             x_inf=x_inf,
             x_sup=x_sup,
@@ -288,16 +271,16 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         )
 
         # Adds other unitless variables.
-        description_layer.splines["c"] = layers_per_part[
+        model_layer.splines["c"] = layers_per_part[
             SolidEarthModelPart.LONG_TERM_ANELASTICITY
         ].splines["c"]
-        description_layer.splines["alpha"] = layers_per_part[
+        model_layer.splines["alpha"] = layers_per_part[
             SolidEarthModelPart.SHORT_TERM_ANELASTICITY
         ].splines["alpha"]
-        description_layer.splines["asymptotic_mu_ratio"] = layers_per_part[
+        model_layer.splines["asymptotic_mu_ratio"] = layers_per_part[
             SolidEarthModelPart.SHORT_TERM_ANELASTICITY
         ].splines["asymptotic_mu_ratio"]
-        description_layer.splines["q_mu"] = layers_per_part[
+        model_layer.splines["q_mu"] = layers_per_part[
             SolidEarthModelPart.SHORT_TERM_ANELASTICITY
         ].splines["q_mu"]
 
@@ -329,13 +312,13 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
                 layers_per_part[SolidEarthModelPart.SHORT_TERM_ANELASTICITY].splines,
             ),
         ]:
-            description_layer.splines[variable_name] = (
+            model_layer.splines[variable_name] = (
                 splines[variable_name][0],
                 splines[variable_name][1] / unit,  # Gets unitless variable.
                 splines[variable_name][2],
             )
 
-        return description_layer
+        return model_layer
 
     def compute_variable_values(
         self,
@@ -345,14 +328,14 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         """
 
         variable_values_per_layer = []
-        for i_layer, layer in enumerate(self.description_layers):
+        for i_layer, layer in enumerate(self.model_layers):
             variable_values_per_layer += [
                 self.compute_variable_values_per_layer(i_layer=i_layer, layer=layer)
             ]
         return variable_values_per_layer
 
     def compute_variable_values_per_layer(
-        self, i_layer: int, layer: DescriptionLayer
+        self, i_layer: int, layer: ModelLayer
     ) -> dict[str, numpy.ndarray]:
         """
         Computes the needed explicit variable values for a single layer.
@@ -412,7 +395,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
                     )
 
                 # Updates spline.
-                self.description_layers[i_layer].splines.update(
+                self.model_layers[i_layer].splines.update(
                     {
                         "tau_m": interpolate.splrep(
                             x=variable_values["x"], y=variable_values["tau_m"]
