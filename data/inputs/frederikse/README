@@ -15,8 +15,8 @@ GMSL_ensembles.nc				All 5000 ensemble members of GMSL and the contributing proc
 
                               - Spatial patterns in relative sea level and solid-Earth deformation and the standard deviation due to each barystatic process are provided for each process individually -
 AIS.nc		                    Antarctic Ice Sheet
-GrIS.nc		                    Greenland Ice Sheet
-glac.nc                         Glaciers (excluding Greenland periphery)
+GrIS.nc		                    greenland Ice Sheet
+glac.nc                         Glaciers (excluding greenland periphery)
 tws.nc                          Terrestrial Water Storage
 total.nc                        All barystatic processes combined
 

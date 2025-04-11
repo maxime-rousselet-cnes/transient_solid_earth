@@ -182,10 +182,10 @@ class ModelLayer(BaseModel):
                 fun=self.y_i_system,
                 t_span=(self.x_inf, self.x_sup),
                 y0=y_i,
-                method=solid_earth_numerical_parameters.method,
-                t_eval=solid_earth_numerical_parameters.t_eval,
-                rtol=solid_earth_numerical_parameters.rtol,
-                atol=solid_earth_numerical_parameters.atol,
+                method=solid_earth_numerical_parameters.integration_parameters.method,
+                t_eval=solid_earth_numerical_parameters.integration_parameters.t_eval,
+                rtol=solid_earth_numerical_parameters.integration_parameters.rtol,
+                atol=solid_earth_numerical_parameters.integration_parameters.atol,
             )
 
         return solver.y[:, -1]

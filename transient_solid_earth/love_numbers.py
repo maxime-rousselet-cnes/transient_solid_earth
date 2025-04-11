@@ -56,10 +56,6 @@ class LoveNumbers:
         axes: Optional[dict[str, numpy.ndarray[complex]]] = None,
         result_array: Optional[numpy.ndarray] = None,
     ) -> None:
-        """
-        Loves numbers are identified by the solid Earth model parameters that were used to processs
-        them.
-        """
 
         self.solid_earth_parameters = solid_earth_parameters
         self.values = values

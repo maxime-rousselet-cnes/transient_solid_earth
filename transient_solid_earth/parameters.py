@@ -17,11 +17,11 @@ class SolidEarthModelOptionParameters(BaseModel):
     Options for solid Earth model parameterization.
     """
 
-    use_long_term_anelasticity: bool  # Whether to use long term anelasticity model or not.
-    use_short_term_anelasticity: bool  # Whether to use short term anelasticity model or not.
+    use_long_term_anelasticity: bool = True  # Whether to use long term anelasticity model or not.
+    use_short_term_anelasticity: bool = True  # Whether to use short term anelasticity model or not.
     use_bounded_attenuation_functions: (
         bool  # Whether to use the bounded version of attenuation functions or not.
-    )
+    ) = True
 
     def string(self):
         """
@@ -41,6 +41,9 @@ class SolidEarthModelOptionParameters(BaseModel):
                 )
             )
         )
+
+
+DEFAULT_SOLID_EARTH_MODEL_OPTION_PARAMETERS = SolidEarthModelOptionParameters()
 
 
 class SolidEarthModelParameters(BaseModel):
@@ -65,6 +68,31 @@ class SolidEarthModelParameters(BaseModel):
     # Number of total layers under the Mantle-Core Boundary.
     below_cmb_layers: Optional[int]  # Should be >= below_ICB_layers.
 
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__(**kwargs)
+
+    def __init__(
+        self,
+        options: SolidEarthModelOptionParameters = DEFAULT_SOLID_EARTH_MODEL_OPTION_PARAMETERS,
+        dynamic_term: bool = True,
+        real_crust: Optional[bool] = None,
+        radius_unit: Optional[float] = None,
+        below_icb_layers: Optional[int] = None,
+        below_cmb_layers: Optional[int] = None,
+    ):
+
+        super().__init__()
+
+        self.options = options
+        self.dynamic_term = dynamic_term
+        self.real_crust = False if real_crust is None else real_crust
+        self.radius_unit = EARTH_RADIUS if radius_unit is None else radius_unit
+        self.below_icb_layers = below_icb_layers
+        self.below_cmb_layers = below_cmb_layers
+
+
+DEFAULT_SOLID_EARTH_MODEL_PARAMETERS = SolidEarthModelParameters()
+
 
 class SolidEarthFrequencyDiscretizationParameters(BaseModel):
     """
@@ -72,11 +100,16 @@ class SolidEarthFrequencyDiscretizationParameters(BaseModel):
     convergence criteria.
     """
 
-    period_min_year: float  # High frequency limit (yr).
-    period_max_year: float  # Low frequency limit (yr).
-    n_frequency_0: int  # Minimal number of computed frequencies per degree.
-    max_tol: float  # Maximal curvature criteria between orders 1 and 2.
-    decimals: int  # Precision in log10(frequency / frequency_unit).
+    period_min_year: float = 1.0e-1  # High frequency limit (yr).
+    period_max_year: float = 1.0e6  # Low frequency limit (yr).
+    n_frequency_0: int = 30  # Minimal number of computed frequencies per degree.
+    max_tol: float = 0.05  # Maximal curvature criteria between orders 1 and 2.
+    decimals: int = 2  # Precision in log10(frequency / frequency_unit).
+
+
+DEFAULT_SOLID_EARTH_FREQUENCY_DISCRETIZATION_PARAMETERS = (
+    SolidEarthFrequencyDiscretizationParameters()
+)
 
 
 class SolidEarthDegreeDiscretizationParameters(BaseModel):
@@ -84,8 +117,29 @@ class SolidEarthDegreeDiscretizationParameters(BaseModel):
     Describes the initial solid Earth model discretization on the degree axis.
     """
 
-    steps: list[int]
-    thresholds: list[int]
+    steps: list[int] = [1, 2, 5]
+    thresholds: list[int] = [1, 20, 40, 100]
+
+
+DEFAULT_SOLID_EARTH_DEGREE_DISCRETIZATION_PARAMETERS = SolidEarthDegreeDiscretizationParameters()
+
+
+class SolidEarthIntegrationNumericalParameters(BaseModel):
+    """
+    Describes the parameters necessary for the numerical integration of the Y_i system.
+    """
+
+    n_max_for_sub_cmb_integration: (
+        int  # Maximal degree for integration under the Core-Mantle Boundary.
+    ) = 35
+    minimal_radius: float = 1.0e3  # r ~= 0 km exact definition (m).
+    method: str = "DOP853"  # Solver's numerical integration method.
+    atol: float = 1.0e-14  # The solver keeps the local error estimates under atol + rtol * abs(yr).
+    rtol: float = 1.0e-11  # See atol parameter description.
+    t_eval: Optional[float] = None
+
+
+DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS = SolidEarthIntegrationNumericalParameters()
 
 
 class SolidEarthNumericalParameters(BaseModel):
@@ -95,14 +149,31 @@ class SolidEarthNumericalParameters(BaseModel):
 
     spline_number: int  # Should be >= max(2, 1 + polynomials degree).
     spline_degree: int  # Should be >= 0.
-    n_max_for_sub_cmb_integration: (
-        int  # Maximal degree for integration under the Core-Mantle Boundary.
-    )
-    minimal_radius: float  # r ~= 0 km exact definition (m).
-    method: str  # Solver's numerical integration method.
-    atol: float  # The solver keeps the local error estimates under atol + rtol * abs(yr).
-    rtol: float  # See atol parameter description.
-    t_eval: Optional[float]
+    integration_parameters: SolidEarthIntegrationNumericalParameters
+    n_max_green: int
+
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__(**kwargs)
+
+    def __init__(
+        self,
+        spline_number: int = 10,
+        spline_degree: int = 1,
+        integration_parameters: SolidEarthIntegrationNumericalParameters = (
+            DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
+        ),
+        n_max_green: int = 90,
+    ) -> None:
+
+        super().__init__()
+
+        self.spline_number = DEFAULT_SPLINE_NUMBER if spline_number is None else spline_number
+        self.spline_degree = spline_degree
+        self.integration_parameters = integration_parameters
+        self.n_max_green = n_max_green
+
+
+DEFAULT_SOLID_EARTH_NUMERICAL_PARAMETERS = SolidEarthNumericalParameters()
 
 
 class SolidEarthOptionParameters(BaseModel):
@@ -110,11 +181,14 @@ class SolidEarthOptionParameters(BaseModel):
     Parameters for optional computations
     """
 
-    compute_Green: bool
-    load_numerical_model: bool
-    model_id: Optional[str]
-    save: bool
-    overwrite_model: bool
+    compute_green: bool = True
+    load_numerical_model: bool = False
+    model_id: Optional[str] = None
+    save: bool = True
+    overwrite_model: bool = False
+
+
+DEFAULT_SOLID_EARTH_OPTION_PARAMETERS = SolidEarthOptionParameters()
 
 
 class SolidEarthParameters(BaseModel):
@@ -122,11 +196,18 @@ class SolidEarthParameters(BaseModel):
     Defines all solid Earth algorithm parameters.
     """
 
-    model: SolidEarthModelParameters
-    frequency_discretization: SolidEarthFrequencyDiscretizationParameters
-    degree_discretization: SolidEarthDegreeDiscretizationParameters
-    numerical_parameters: SolidEarthNumericalParameters
-    options: SolidEarthOptionParameters
+    model: SolidEarthModelParameters = DEFAULT_SOLID_EARTH_MODEL_PARAMETERS
+    frequency_discretization: SolidEarthFrequencyDiscretizationParameters = (
+        DEFAULT_SOLID_EARTH_FREQUENCY_DISCRETIZATION_PARAMETERS
+    )
+    degree_discretization: SolidEarthDegreeDiscretizationParameters = (
+        DEFAULT_SOLID_EARTH_DEGREE_DISCRETIZATION_PARAMETERS
+    )
+    numerical_parameters: SolidEarthNumericalParameters = DEFAULT_SOLID_EARTH_NUMERICAL_PARAMETERS
+    options: SolidEarthOptionParameters = DEFAULT_SOLID_EARTH_OPTION_PARAMETERS
+
+
+DEFAULT_SOLID_EARTH_PARAMETERS = SolidEarthParameters()
 
 
 class LoadSaveOptionParameters(BaseModel):
@@ -134,19 +215,22 @@ class LoadSaveOptionParameters(BaseModel):
     Defines load processing step save options for a given data structure.
     """
 
-    all: bool  # Overwrites all other parameters with 'True' if set to 'True'.
-    step_1: bool  # Initial model signal.
-    step_2: bool  # Anelastic correcting polatr tide coefficients.
+    all: bool = True  # Overwrites all other parameters with 'True' if set to 'True'.
+    step_1: bool = True  # Initial model signal.
+    step_2: bool = True  # Anelastic correcting polatr tide coefficients.
     step_3: (
         bool  # Anelastic load signal computed after frequencial filtering by Love number fractions.
-    )
-    step_4: bool  # Anelastic load signal computed after degree one inversion.
-    step_5: bool  # Anelastic load signal computed after leakage corretion.
+    ) = True
+    step_4: bool = True  # Anelastic load signal computed after degree one inversion.
+    step_5: bool = True  # Anelastic load signal computed after leakage corretion.
     # Initial.
     inversion_components: (
         bool  # Three remaining components of degree one inversion equation:
         # geoid height, radial displacement and residuals.
-    )
+    ) = True
+
+
+DEFAULT_LOAD_SAVE_OPTION_PARAMETERS = LoadSaveOptionParameters()
 
 
 class LoadModelNumericalParameters(BaseModel):
@@ -154,27 +238,32 @@ class LoadModelNumericalParameters(BaseModel):
     Defines the load algorithm parameters.
     """
 
-    leakage_correction_iterations: int
+    leakage_correction_iterations: int = 1
     renormalize_recent_trend: (
         bool  # Wether to rescale recent period trends on GRACE ocean mean trend.
-    )
-    initial_past_trend_factor: float
-    anti_Gibbs_effect_factor: int  # Integer, minimum equal to 1 (unitless).
-    spline_time_years: int  # Time for the anti-symmetrization spline process in years.
+    ) = True
+    initial_past_trend_factor: float = 1.22
+    anti_Gibbs_effect_factor: int = 0  # Integer, minimum equal to 1 (unitless).
+    spline_time_years: int = 50  # Time for the anti-symmetrization spline process in years.
     initial_plateau_time_years: (
         int  # Time of the zero-value plateau before the signal history (yr).
+    ) = 2000
+    signal_threshold: float = 12.0  # (mm/yr).
+    signal_threshold_past: float = 6.0  # (mm/yr).
+    mean_signal_threshold: Optional[float] = None  # (mm/yr).
+    mean_signal_threshold_past: Optional[float] = None  # (mm/yr).
+    ddk_filter_level: int = 5
+    ocean_mask: str = "IMERG_land_sea_mask.nc"
+    continents: str = "geopandas-continents.zip"
+    buffer_distance: float = 300.0  # Buffer to coast (km).
+    first_year_for_trend: int = 2003
+    last_year_for_trend: int = 2022
+    past_trend_error: float = (
+        1e-3  # Maximal admitted error for past trend matching to data (mm/yr).
     )
-    signal_threshold: float  # (mm/yr).
-    signal_threshold_past: float  # (mm/yr).
-    mean_signal_threshold: Optional[float]  # (mm/yr).
-    mean_signal_threshold_past: Optional[float]  # (mm/yr).
-    ddk_filter_level: int
-    ocean_mask: str
-    continents: str
-    buffer_distance: int  # Buffer to coast (km).
-    first_year_for_trend: int
-    last_year_for_trend: int
-    past_trend_error: float  # Maximal admitted error for past trend matching to data (mm/yr).
+
+
+DEFAULT_LOAD_MODEL_NUMERICAL_PARAMETERS = LoadModelNumericalParameters()
 
 
 class LoadModelPoleParameters(BaseModel):
@@ -182,28 +271,21 @@ class LoadModelPoleParameters(BaseModel):
     Defines all parameters for the pole time series.
     """
 
-    use: bool  # Whether to performs Wahr (2015) recommended polar tide correction.
-    file: str  # (.csv) file path relative to data/pole_data.
-    mean_pole_convention: str  # IERS_2010, IERS_2018_update, etc...
-    case: str  # Whether "lower", "mean" or "upper".
-    pole_secular_term_trend_start_date: int
-    pole_secular_term_trend_end_date: int
-    ramp: bool
-    filter_wobble: bool  # Whether to filter low-pass at the annual frequency.
-    phi_constant: bool
-    remove_pole_secular_trend: bool
-    remove_mean_pole: bool
-    wobble_filtering_kernel_length: int
+    use: bool = True  # Whether to performs Wahr (2015) recommended polar tide correction.
+    file: str = "pole"  # (.csv) file path relative to data/pole_data.
+    mean_pole_convention: str = "IERS_2018_update"  # IERS_2010, IERS_2018_update, etc...
+    case: str = "mean"  # Whether "lower", "mean" or "upper".
+    pole_secular_term_trend_start_date: int = 1900
+    pole_secular_term_trend_end_date: int = 1978
+    ramp: bool = False
+    filter_wobble: bool = True  # Whether to filter low-pass at the annual frequency.
+    phi_constant: bool = True
+    remove_pole_secular_trend: bool = False
+    remove_mean_pole: bool = True
+    wobble_filtering_kernel_length: int = 50
 
 
-class LoadModelHistoryParameters(BaseModel):
-    """
-    Defines the temporal evolution of the load model.
-    """
-
-    file: str  # (.csv) file path relative to data/GMSL_data.
-    start_date: int  # Usually 1900 for Frederikse GMSL data.
-    case: str  # Whether "lower", "mean" or "upper".
+DEFAULT_LOAD_MODEL_POLE_PARAMETERS = LoadModelPoleParameters()
 
 
 class LoadModelLIAParameters(BaseModel):
@@ -211,10 +293,30 @@ class LoadModelLIAParameters(BaseModel):
     Defines the simplified LIA (little ice age) model.
     """
 
-    use: bool  # Whethter to take LIA into account or not.
-    end_date: int  # Usualy ~ 1400 (yr).
-    time_years: int  # Usually ~ 100 (yr).
-    amplitude_effect: float  # Usually ~ 0.25 (unitless).
+    use: bool = False  # Whethter to take LIA into account or not.
+    end_date: int = 1400  # Usualy ~ 1400 (yr).
+    time_years: int = 100  # Usually ~ 100 (yr).
+    amplitude_effect: float = 0.25  # Usually ~ 0.25 (unitless).
+
+
+class LoadModelHistoryParameters(BaseModel):
+    """
+    Defines the temporal evolution of the load model.
+    """
+
+    file: str = (
+        "Frederikse/global_basin_timeseries.csv"  # (.csv) file path relative to data/GMSL_data.
+    )
+    start_date: int = 1900  # Usually 1900 for Frederikse GMSL data.
+    case: str = "mean"  # Whether "lower", "mean" or "upper".
+    pole: LoadModelPoleParameters = (DEFAULT_LOAD_MODEL_POLE_PARAMETERS,)
+    lia: LoadModelLIAParameters = (DEFAULT_LOAD_MODEL_LIA_PARAMETERS,)
+
+
+DEFAULT_LOAD_MODEL_HISTORY_PARAMETERS = LoadModelHistoryParameters()
+
+
+DEFAULT_LOAD_MODEL_LIA_PARAMETERS = LoadModelLIAParameters()
 
 
 class LoadModelSpatialSignatureParameters(BaseModel):
@@ -222,9 +324,13 @@ class LoadModelSpatialSignatureParameters(BaseModel):
     Defines the load spatial signature parameters.
     """
 
-    opposite_load_on_continents: bool
-    n_max: int
-    file: str  # (.csv) file path relative to data.
+    opposite_load_on_continents: bool = False
+    n_max: int = 88
+    # (.csv) file path relative to data.
+    file: str = "DDK7/TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+
+
+DEFAULT_LOAD_MODEL_SPATIAL_SIGNATURE_PARAMETERS = LoadModelSpatialSignatureParameters()
 
 
 class LoadModelOptionParameters(BaseModel):
@@ -232,9 +338,12 @@ class LoadModelOptionParameters(BaseModel):
     Defines optional computations for the load algorithm.
     """
 
-    compute_residuals: bool
-    invert_for_J2: bool
-    compute_displacements: bool
+    compute_residuals: bool = False
+    invert_for_J2: bool = False
+    compute_displacements: bool = True
+
+
+DEFAULT_LOAD_MODEL_OPTION_PARAMETERS = LoadModelOptionParameters()
 
 
 class LoadNumericalModelParameters(BaseModel):
@@ -243,11 +352,40 @@ class LoadNumericalModelParameters(BaseModel):
     """
 
     numerical_parameters: LoadModelNumericalParameters
-    pole: LoadModelPoleParameters
     history: LoadModelHistoryParameters
-    lia: LoadModelLIAParameters
     signature: LoadModelSpatialSignatureParameters
     options: LoadModelOptionParameters
+
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__(**kwargs)
+
+    def __init__(
+        self,
+        numerical_parameters: LoadModelNumericalParameters = (
+            DEFAULT_LOAD_MODEL_NUMERICAL_PARAMETERS
+        ),
+        history: LoadModelHistoryParameters = DEFAULT_LOAD_MODEL_HISTORY_PARAMETERS,
+        signature: LoadModelSpatialSignatureParameters = (
+            DEFAULT_LOAD_MODEL_SPATIAL_SIGNATURE_PARAMETERS
+        ),
+        options: LoadModelOptionParameters = DEFAULT_LOAD_MODEL_OPTION_PARAMETERS,
+    ) -> None:
+
+        super().__init__()
+
+        self.numerical_parameters = numerical_parameters
+        self.history = history
+        self.signature = signature
+        self.options = options
+        if "MSSA" in self.signature.file:
+            self.numerical_parameters.ddk_filter_level = 7
+        if not "DDK" in self.signature.file:
+            self.signature.file = (
+                "DDK" + str(self.numerical_parameters.ddk_filter_level) + "/" + self.signature.file
+            )
+
+
+DEFAULT_LOAD_NUMERICAL_MODEL_PARAMETERS = LoadNumericalModelParameters()
 
 
 class LoadParameters(BaseModel):
@@ -255,53 +393,37 @@ class LoadParameters(BaseModel):
     Load model and algorithm parameters, including save options.
     """
 
-    save_options: LoadSaveOptionParameters
-    model: LoadNumericalModelParameters
+    save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
+    model: LoadNumericalModelParameters = DEFAULT_LOAD_NUMERICAL_MODEL_PARAMETERS
+
+
+DEFAULT_LOAD_PARAMETERS = LoadParameters()
 
 
 class Parameters(BaseModel):
     """
-    includes all transient solid Earth and load re-estimation algorithm parameters.
+    Includes all transient solid Earth and load re-estimation algorithm parameters.
     """
 
-    solid_earth: SolidEarthParameters
-    load: LoadParameters
+    solid_earth: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS
+    load: LoadParameters = DEFAULT_LOAD_PARAMETERS
 
 
-def load_parameters(
-    name: str = "parameters", path: Path = data_path, fix_ddk: bool = False
-) -> Parameters:
+DEFAULT_PARAMETERS = Parameters()
+
+
+def load_parameters(name: str = "parameters", path: Path = data_path) -> Parameters:
     """
-    Routine that gets parameters from (.JSON) file.
+    Gets parameters from (.JSON) file.
     """
 
-    parameters: Parameters = load_base_model(name=name, path=path, base_model_type=Parameters)
-    if fix_ddk and ("MSSA" in parameters.load.model.signature.file):
-        parameters.load.model.numerical_parameters.ddk_filter_level = 7
-    if not "DDK" in parameters.load.model.signature.file:
-        parameters.load.model.signature.file = (
-            "DDK"
-            + str(parameters.load.model.numerical_parameters.ddk_filter_level)
-            + "/"
-            + parameters.load.model.signature.file
-        )
-    parameters.solid_earth.model.radius_unit = (
-        EARTH_RADIUS
-        if parameters.solid_earth.model.radius_unit is None
-        else parameters.solid_earth.model.radius_unit
-    )
-    parameters.solid_earth.model.real_crust = (
-        False
-        if parameters.solid_earth.model.real_crust is None
-        else parameters.solid_earth.model.real_crust
-    )
-    parameters.solid_earth.numerical_parameters.spline_number = (
-        DEFAULT_SPLINE_NUMBER
-        if parameters.solid_earth.numerical_parameters.spline_number is None
-        else parameters.solid_earth.numerical_parameters.spline_number
-    )
+    return load_base_model(name=name, path=path, base_model_type=Parameters)
 
-    return parameters
+
+class BatchParameters(BaseModel):
+    """
+    Describes the parameters to vary when launching a batch of computations.
+    """
 
 
 # List of all possible boolean triplets.

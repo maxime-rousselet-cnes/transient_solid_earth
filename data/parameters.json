@@ -33,15 +33,18 @@
         "numerical_parameters": {
             "spline_number": 10,
             "spline_degree": 1,
-            "n_max_for_sub_cmb_integration": 35,
-            "minimal_radius": 1e3,
-            "method": "DOP853",
-            "atol": 1e-14,
-            "rtol": 1e-11,
-            "t_eval": null
+            "integration_parameters": {
+                "n_max_for_sub_cmb_integration": 35,
+                "minimal_radius": 1e3,
+                "method": "DOP853",
+                "atol": 1e-14,
+                "rtol": 1e-11,
+                "t_eval": null
+            },
+            "n_max_green": 90
         },
         "options": {
-            "compute_Green": true,
+            "compute_green": true,
             "load_numerical_model": false,
             "model_id": null,
             "save": true,
@@ -89,30 +92,30 @@
                 "last_year_for_trend": 2022,
                 "past_trend_error": 1e-3
             },
-            "pole": {
-                "use": true,
-                "file": "pole",
-                "mean_pole_convention": "IERS_2018_update",
-                "case": "mean",
-                "pole_secular_term_trend_start_date": 1900,
-                "pole_secular_term_trend_end_date": 1978,
-                "ramp": false,
-                "filter_wobble": true,
-                "phi_constant": true,
-                "remove_pole_secular_trend": false,
-                "remove_mean_pole": true,
-                "wobble_filtering_kernel_length": 50
-            },
             "history": {
                 "file": "Frederikse/global_basin_timeseries.csv",
                 "start_date": 1900,
-                "case": "mean"
-            },
-            "lia": {
-                "use": false,
-                "end_date": 1400,
-                "time_years": 100,
-                "amplitude_effect": 0.25
+                "case": "mean",
+                "pole": {
+                    "use": true,
+                    "file": "pole",
+                    "mean_pole_convention": "IERS_2018_update",
+                    "case": "mean",
+                    "pole_secular_term_trend_start_date": 1900,
+                    "pole_secular_term_trend_end_date": 1978,
+                    "ramp": false,
+                    "filter_wobble": true,
+                    "phi_constant": true,
+                    "remove_pole_secular_trend": false,
+                    "remove_mean_pole": true,
+                    "wobble_filtering_kernel_length": 50
+                },
+                "lia": {
+                    "use": false,
+                    "end_date": 1400,
+                    "time_years": 100,
+                    "amplitude_effect": 0.25
+                }
             },
             "signature": {
                 "opposite_load_on_continents": false,

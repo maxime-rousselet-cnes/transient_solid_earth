@@ -10,7 +10,7 @@ from scipy import interpolate
 
 from .constants import ASYMPTOTIC_MU_RATIO_DECIMALS, LAYER_DECIMALS, SECONDS_PER_YEAR
 from .model_layer import ModelLayer
-from .parameters import SolidEarthParameters, load_parameters
+from .parameters import DEFAULT_SOLID_EARTH_PARAMETERS, SolidEarthParameters
 from .rheological_formulas import find_tau_m, mu_k_computing
 from .separators import (
     LAYER_NAMES_SEPARATOR,
@@ -97,7 +97,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
 
     def __init__(
         self,
-        solid_earth_parameters: SolidEarthParameters = load_parameters().solid_earth,
+        solid_earth_parameters: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS,
         elasticity_name: Optional[str] = None,
         long_term_anelasticity_name: Optional[str] = None,
         short_term_anelasticity_name: Optional[str] = None,

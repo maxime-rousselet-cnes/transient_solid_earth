@@ -175,30 +175,32 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         given degree, frequency and rheology.
         """
 
+        numerical_parameters = self.solid_earth_parameters.numerical_parameters
+
         # The basis of solution to integrate.
         y_1 = INITIAL_Y_VECTOR[0, :].flatten()
         y_2 = INITIAL_Y_VECTOR[1, :].flatten()
         y_3 = INITIAL_Y_VECTOR[2, :].flatten()
 
         # I - Integrate from Geocenter to CMB.
-        if self.n <= self.solid_earth_parameters.numerical_parameters.n_max_for_sub_cmb_integration:
+        if self.n <= numerical_parameters.integration_parameters.n_max_for_sub_cmb_integration:
 
             # Integrate from Geocenter to CMB for low degrees only.
             self.model_layers[0].x_inf = (
-                self.solid_earth_parameters.numerical_parameters.minimal_radius
+                numerical_parameters.integration_parameters.minimal_radius
                 / self.solid_earth_parameters.model.radius_unit
             )
 
             # Integrates in the Inner-Core.
             for n_layer in range(self.solid_earth_parameters.model.below_icb_layers):
                 y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_1, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                    y_i=y_1, numerical_parameters=numerical_parameters
                 )
                 y_2, _ = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_2, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                    y_i=y_2, numerical_parameters=numerical_parameters
                 )
                 y_3, _ = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_3, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                    y_i=y_3, numerical_parameters=numerical_parameters
                 )
 
             # ICB Boundary conditions.
@@ -212,7 +214,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 self.solid_earth_parameters.model.below_cmb_layers,
             ):
                 y = self.model_layers[n_layer].integrate_y_i_system(
-                    Y_i=y, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                    Y_i=y, numerical_parameters=numerical_parameters
                 )
 
             # CMB Boundary conditions.
@@ -225,13 +227,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             self.solid_earth_parameters.model.below_cmb_layers, len(self.model_layers)
         ):
             y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_1, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                y_i=y_1, numerical_parameters=numerical_parameters
             )
             y_2, _ = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_2, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                y_i=y_2, numerical_parameters=numerical_parameters
             )
             y_3, _ = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_3, numerical_parameters=self.solid_earth_parameters.numerical_parameters
+                y_i=y_3, numerical_parameters=numerical_parameters
             )
 
         # h_load, l_load, k_load, h_shear, l_shear, k_shear, h_potential, l_potential, k_potential.
