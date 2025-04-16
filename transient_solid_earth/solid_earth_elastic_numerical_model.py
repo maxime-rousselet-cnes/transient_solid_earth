@@ -74,14 +74,18 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
 
         # Updates basic fields.
         if (
-            self.solid_earth_parameters.model.below_icb_layers is None
-            or self.solid_earth_parameters.model.below_cmb_layers is None
+            self.solid_earth_parameters.model.structure_parameters.below_icb_layers is None
+            or self.solid_earth_parameters.model.structure_parameters.below_cmb_layers is None
         ):
             below_icb_layers, below_cmb_layers = self.find_fluid_layers()
-            if self.solid_earth_parameters.model.below_cmb_layers is None:
-                self.solid_earth_parameters.model.below_cmb_layers = below_cmb_layers
-            if self.solid_earth_parameters.model.below_icb_layers is None:
-                self.solid_earth_parameters.model.below_icb_layers = below_icb_layers
+            if self.solid_earth_parameters.model.structure_parameters.below_cmb_layers is None:
+                self.solid_earth_parameters.model.structure_parameters.below_cmb_layers = (
+                    below_cmb_layers
+                )
+            if self.solid_earth_parameters.model.structure_parameters.below_icb_layers is None:
+                self.solid_earth_parameters.model.structure_parameters.below_icb_layers = (
+                    below_icb_layers
+                )
 
         self.x_cmb = self.model_layers[below_cmb_layers].x_inf
 

@@ -352,7 +352,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             "lambda_0": layer.evaluate(x=x, variable="lambda_0"),
         }
 
-        if i_layer >= self.solid_earth_parameters.model.below_cmb_layers:
+        if i_layer >= self.solid_earth_parameters.model.structure_parameters.below_cmb_layers:
 
             # Variables needed above the Core-Mantle Boundary.
             variable_values.update(

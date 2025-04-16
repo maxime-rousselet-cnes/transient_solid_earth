@@ -74,16 +74,17 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                     for variable_name in ["g_0", "rho_0", "mu_0", "lambda_0", "Vs", "Vp"]
                     + (
                         ["eta_m"]
-                        if i_layer >= self.solid_earth_parameters.model.below_cmb_layers
+                        if i_layer
+                        >= self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
                         else []
                     )
                 },
             )
 
             if (
-                self.solid_earth_parameters.model.below_cmb_layers
+                self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
                 > i_layer
-                >= self.solid_earth_parameters.model.below_icb_layers
+                >= self.solid_earth_parameters.model.structure_parameters.below_icb_layers
             ):
 
                 # Updates fluid matrix splines.
@@ -100,7 +101,10 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 variables["lambda"] = numpy.array(object=variables["lambda_0"], dtype=complex)
                 variables["mu"] = numpy.array(object=variables["mu_0"], dtype=complex)
 
-                if i_layer >= self.solid_earth_parameters.model.below_cmb_layers:
+                if (
+                    i_layer
+                    >= self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
+                ):
 
                     # Attenuation.
                     if options.use_short_term_anelasticity:
@@ -157,7 +161,8 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                     n=n,
                     omega=(
                         omega
-                        if self.solid_earth_parameters.model.dynamic_term and omega != numpy.inf
+                        if self.solid_earth_parameters.model.structure_parameters.dynamic_term
+                        and omega != numpy.inf
                         else 0.0
                     ),
                     spline_number=self.solid_earth_parameters.numerical_parameters.spline_number,
@@ -192,7 +197,9 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             )
 
             # Integrates in the Inner-Core.
-            for n_layer in range(self.solid_earth_parameters.model.below_icb_layers):
+            for n_layer in range(
+                self.solid_earth_parameters.model.structure_parameters.below_icb_layers
+            ):
                 y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
                     y_i=y_1, numerical_parameters=numerical_parameters
                 )
@@ -205,13 +212,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
 
             # ICB Boundary conditions.
             y = self.model_layers[
-                int(self.solid_earth_parameters.model.below_icb_layers)
+                int(self.solid_earth_parameters.model.structure_parameters.below_icb_layers)
             ].solid_to_fluid(y_1=y_1, y_2=y_2, y_3=y_3)
 
             # Integrates in the Outer-Core.
             for n_layer in range(
-                self.solid_earth_parameters.model.below_icb_layers,
-                self.solid_earth_parameters.model.below_cmb_layers,
+                self.solid_earth_parameters.model.structure_parameters.below_icb_layers,
+                self.solid_earth_parameters.model.structure_parameters.below_cmb_layers,
             ):
                 y = self.model_layers[n_layer].integrate_y_i_system(
                     Y_i=y, numerical_parameters=numerical_parameters
@@ -219,12 +226,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
 
             # CMB Boundary conditions.
             y_1, y_2, y_3 = self.model_layers[
-                self.solid_earth_parameters.model.below_cmb_layers - 1
+                self.solid_earth_parameters.model.structure_parameters.below_cmb_layers - 1
             ].fluid_to_solid(yf_1=y)
 
         # Integrates from the CMB to the surface.
         for n_layer in range(
-            self.solid_earth_parameters.model.below_cmb_layers, len(self.model_layers)
+            self.solid_earth_parameters.model.structure_parameters.below_cmb_layers,
+            len(self.model_layers),
         ):
             y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
                 y_i=y_1, numerical_parameters=numerical_parameters

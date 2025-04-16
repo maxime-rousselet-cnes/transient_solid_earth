@@ -4,11 +4,13 @@
             "use_long_term_anelasticity": true,
             "use_short_term_anelasticity": true,
             "use_bounded_attenuation_functions": true,
-            "dynamic_term": true,
             "real_crust": false,
             "radius_unit": null,
-            "below_icb_layers": null,
-            "below_cmb_layers": null
+            "structure_parameters": {
+                "dynamic_term": true,
+                "below_icb_layers": null,
+                "below_cmb_layers": null
+            }
         },
         "frequency_discretization": {
             "period_min_year": 1e-1,
@@ -127,6 +129,98 @@
                 "invert_for_J2": false,
                 "compute_displacements": true
             }
+        }
+    },
+    "solid_earth_variabilities": {
+        "model_names": {
+            "elasticity": [
+                "PREM"
+            ],
+            "long_term_anelasticity": [
+                "VM7",
+                "VM5a",
+                "Mao_Zhong",
+                "Lau",
+                "Lambeck_2017",
+                "Caron"
+            ],
+            "short_term_anelasticity": [
+                "Benjamin_Q_Resovsky",
+                "Benjamin_Q_PAR3P",
+                "Benjamin_Q_PREM",
+                "Benjamin_Q_QL6",
+                "Benjamin_Q_QM1"
+            ]
+        },
+        "rheological_parameters": {
+            "long_term_anelasticity": {
+                "eta_m": {
+                    "ASTHENOSPHERE": [
+                        [
+                            3e18
+                        ],
+                        [
+                            3e19
+                        ]
+                    ]
+                }
+            },
+            "short_term_anelasticity": {
+                "asymptotic_mu_ratio": {
+                    "MANTLE": [
+                        [
+                            0.1
+                        ],
+                        [
+                            0.2
+                        ]
+                    ]
+                },
+                "alpha": {
+                    "MANTLE": [
+                        [
+                            0.223
+                        ],
+                        [
+                            0.297
+                        ]
+                    ]
+                }
+            }
+        }
+    },
+    "load_model_variabilities": {
+        "history": {
+            "case": [
+                "mean",
+                "lower",
+                "upper"
+            ],
+            "pole": {
+                "case": [
+                    "mean",
+                    "lower",
+                    "upper"
+                ]
+            },
+            "lia": {
+                "use": [
+                    false,
+                    true
+                ]
+            }
+        },
+        "signature": {
+            "opposite_load_on_continents": [
+                false,
+                true
+            ],
+            "load_spatial_behaviour_file": [
+                "GFZ",
+                "JPL",
+                "CSR",
+                "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+            ]
         }
     }
 }

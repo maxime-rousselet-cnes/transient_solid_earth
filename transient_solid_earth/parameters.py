@@ -3,13 +3,13 @@ Defines all parameter classes.
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 from .constants import DEFAULT_SPLINE_NUMBER, EARTH_RADIUS
 from .database import load_base_model
-from .paths import data_path
+from .paths import SolidEarthModelPart, data_path
 
 
 class SolidEarthModelOptionParameters(BaseModel):
@@ -46,21 +46,12 @@ class SolidEarthModelOptionParameters(BaseModel):
 DEFAULT_SOLID_EARTH_MODEL_OPTION_PARAMETERS = SolidEarthModelOptionParameters()
 
 
-class SolidEarthModelParameters(BaseModel):
+class SolidEarthModelStructureParameters(BaseModel):
     """
-    Parameterizes the solid Earth model.
+    Defines the solid Earth model parameters usefull for Y_i system integration.
     """
 
-    options: SolidEarthModelOptionParameters
     dynamic_term: bool  # Whether to use omega^2 terms or not.
-    real_crust: (
-        Optional[
-            bool
-        ]  # Whether to use 'real_crust' values or not. Usefull to easily switch from ocenanic
-        # to continental crust parameters.
-    )
-    radius_unit: Optional[float]  # Length unit (m).
-
     # Number of layers under boundaries. If they are None: Automatic detection using elasticity
     # model layer names.
     # Number of layers under the Inner-Core Boundary.
@@ -68,27 +59,44 @@ class SolidEarthModelParameters(BaseModel):
     # Number of total layers under the Mantle-Core Boundary.
     below_cmb_layers: Optional[int]  # Should be >= below_ICB_layers.
 
+
+DEFAULT_SOLID_EARTH_MODEL_STRUCTURE_PARAMETERS = SolidEarthModelStructureParameters()
+
+
+class SolidEarthModelParameters(BaseModel):
+    """
+    Parameterizes the solid Earth model.
+    """
+
+    options: SolidEarthModelOptionParameters
+    real_crust: (
+        Optional[
+            bool
+        ]  # Whether to use 'real_crust' values or not. Usefull to easily switch from ocenanic
+        # to continental crust parameters.
+    )
+    radius_unit: Optional[float]  # Length unit (m).
+    structure_parameters: SolidEarthModelStructureParameters
+
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
 
     def __init__(
         self,
         options: SolidEarthModelOptionParameters = DEFAULT_SOLID_EARTH_MODEL_OPTION_PARAMETERS,
-        dynamic_term: bool = True,
         real_crust: Optional[bool] = None,
         radius_unit: Optional[float] = None,
-        below_icb_layers: Optional[int] = None,
-        below_cmb_layers: Optional[int] = None,
+        structure_parameters: SolidEarthModelStructureParameters = (
+            DEFAULT_SOLID_EARTH_MODEL_STRUCTURE_PARAMETERS
+        ),
     ):
 
         super().__init__()
 
         self.options = options
-        self.dynamic_term = dynamic_term
         self.real_crust = False if real_crust is None else real_crust
         self.radius_unit = EARTH_RADIUS if radius_unit is None else radius_unit
-        self.below_icb_layers = below_icb_layers
-        self.below_cmb_layers = below_cmb_layers
+        self.structure_parameters = structure_parameters
 
 
 DEFAULT_SOLID_EARTH_MODEL_PARAMETERS = SolidEarthModelParameters()
@@ -299,6 +307,9 @@ class LoadModelLIAParameters(BaseModel):
     amplitude_effect: float = 0.25  # Usually ~ 0.25 (unitless).
 
 
+DEFAULT_LOAD_MODEL_LIA_PARAMETERS = LoadModelLIAParameters()
+
+
 class LoadModelHistoryParameters(BaseModel):
     """
     Defines the temporal evolution of the load model.
@@ -314,9 +325,6 @@ class LoadModelHistoryParameters(BaseModel):
 
 
 DEFAULT_LOAD_MODEL_HISTORY_PARAMETERS = LoadModelHistoryParameters()
-
-
-DEFAULT_LOAD_MODEL_LIA_PARAMETERS = LoadModelLIAParameters()
 
 
 class LoadModelSpatialSignatureParameters(BaseModel):
@@ -400,6 +408,43 @@ class LoadParameters(BaseModel):
 DEFAULT_LOAD_PARAMETERS = LoadParameters()
 
 
+class SolidEarthVariableParameters(BaseModel):
+    """
+    Needed fields to describes the loop on rheological models.
+    """
+
+    model_names: dict[SolidEarthModelPart, list[str]] = {
+        SolidEarthModelPart.ELASTICITY: ["PREM"],
+        SolidEarthModelPart.LONG_TERM_ANELASTICITY: [
+            "VM7",
+            "VM5a",
+            "Mao_Zhong",
+            "Lau",
+            "Lambeck_2017",
+            "Caron",
+        ],
+        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: [
+            "Benjamin_Q_Resovsky",
+            "Benjamin_Q_PAR3P",
+            "Benjamin_Q_PREM",
+            "Benjamin_Q_QL6",
+            "Benjamin_Q_QM1",
+        ],
+    }
+    rheological_parameters: dict[str, dict[str, dict[str, list[list[float]]]]] = (
+        {
+            "long_term_anelasticity": {"eta_m": {"ASTHENOSPHERE": [[3e18], [3e19]]}},
+            "short_term_anelasticity": {
+                "asymptotic_mu_ratio": {"MANTLE": [[0.1], [0.2]]},
+                "alpha": {"MANTLE": [[0.223], [0.297]]},
+            },
+        },
+    )
+
+
+DEFAULT_SOLID_EARTH_VARIABLE_PARAMETERS = SolidEarthVariableParameters()
+
+
 class Parameters(BaseModel):
     """
     Includes all transient solid Earth and load re-estimation algorithm parameters.
@@ -407,6 +452,10 @@ class Parameters(BaseModel):
 
     solid_earth: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS
     load: LoadParameters = DEFAULT_LOAD_PARAMETERS
+    solid_earth_variabilities: SolidEarthVariableParameters = (
+        DEFAULT_SOLID_EARTH_VARIABLE_PARAMETERS
+    )
+    load_model_variabilities: dict[str, Any] = {}
 
 
 DEFAULT_PARAMETERS = Parameters()
@@ -420,13 +469,7 @@ def load_parameters(name: str = "parameters", path: Path = data_path) -> Paramet
     return load_base_model(name=name, path=path, base_model_type=Parameters)
 
 
-class BatchParameters(BaseModel):
-    """
-    Describes the parameters to vary when launching a batch of computations.
-    """
-
-
-# List of all possible boolean triplets.
+# List of all possible non-elastic models.
 SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS: list[SolidEarthModelOptionParameters] = [
     SolidEarthModelOptionParameters(
         use_long_term_anelasticity=True,
@@ -440,21 +483,6 @@ SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS: list[SolidEarthModelOptionParameters] =
     ),
     SolidEarthModelOptionParameters(
         use_long_term_anelasticity=True,
-        use_short_term_anelasticity=False,
-        use_bounded_attenuation_functions=False,
-    ),
-    SolidEarthModelOptionParameters(
-        use_long_term_anelasticity=False,
-        use_short_term_anelasticity=True,
-        use_bounded_attenuation_functions=False,
-    ),
-    SolidEarthModelOptionParameters(
-        use_long_term_anelasticity=True,
-        use_short_term_anelasticity=True,
-        use_bounded_attenuation_functions=False,
-    ),
-    SolidEarthModelOptionParameters(
-        use_long_term_anelasticity=False,
         use_short_term_anelasticity=False,
         use_bounded_attenuation_functions=False,
     ),
