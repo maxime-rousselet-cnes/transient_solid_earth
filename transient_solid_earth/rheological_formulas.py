@@ -20,7 +20,7 @@ def frequencies_to_periods(
 
 def mu_0_computing(rho_0: ndarray, v_s: ndarray) -> ndarray:
     """
-    Computes real elastic modulus mu given density rho_0 and S wave speed Vs.
+    Computes real elastic modulus mu given density rho_0 and S wave speed v_s.
     """
 
     return rho_0 * v_s**2
@@ -28,7 +28,7 @@ def mu_0_computing(rho_0: ndarray, v_s: ndarray) -> ndarray:
 
 def lambda_0_computing(rho_0: ndarray, v_p: ndarray, mu_0: ndarray) -> ndarray:
     """
-    Computes real elastic modulus lambda given density rho_0, P wave speed Vp and real elastic
+    Computes real elastic modulus lambda given density rho_0, P wave speed v_p and real elastic
     modulus mu.
     """
 

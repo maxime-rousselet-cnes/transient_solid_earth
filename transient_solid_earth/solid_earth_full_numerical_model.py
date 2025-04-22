@@ -98,9 +98,9 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
     def __init__(
         self,
         solid_earth_parameters: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS,
-        elasticity_name: Optional[str] = None,
-        long_term_anelasticity_name: Optional[str] = None,
-        short_term_anelasticity_name: Optional[str] = None,
+        elasticity_name: Optional[str] = "PREM",
+        long_term_anelasticity_name: Optional[str] = "uniform",
+        short_term_anelasticity_name: Optional[str] = "uniform",
     ) -> None:
 
         # Updates inherited fields.
@@ -167,7 +167,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
                 # ... or builds it.
                 else:
                     model_parts[solid_earth_model_part].build(
-                        model_part=solid_earth_model_part,
+                        solid_earth_model_part=solid_earth_model_part,
                         overwrite_model=True,
                         save=solid_earth_parameters.options.save,
                     )
@@ -176,6 +176,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             self.x_cmb = model_parts[SolidEarthModelPart.ELASTICITY].x_cmb
 
             # Updates new fields.
+            self.period_unit = model_parts[SolidEarthModelPart.ELASTICITY].period_unit
             self.viscosity_unit = (
                 model_parts[SolidEarthModelPart.ELASTICITY].density_unit
                 * self.solid_earth_parameters.model.radius_unit**2
@@ -205,7 +206,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
 
         # Initializes with Core elastic and liquid layers.
         self.model_layers = model_parts[SolidEarthModelPart.ELASTICITY].model_layers[
-            : self.solid_earth_parameters.model.below_cmb_layers
+            : self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
         ]
 
         # Initializes accumulators.
@@ -214,7 +215,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
             model_part: 0 for model_part in SolidEarthModelPart
         }
         layer_indices_per_part[SolidEarthModelPart.ELASTICITY] = (
-            self.solid_earth_parameters.model.below_cmb_layers
+            self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
         )
 
         # Checks all layers from CMB to surface and merges their descrptions.
@@ -342,7 +343,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         """
 
         x = layer.x_profile(
-            spline_number=self.solid_earth_parameters.numerical_parameters.spline_number
+            spline_number=self.solid_earth_parameters.numerical_parameters.spline_number,
         )
 
         # Variables needed for all layers.

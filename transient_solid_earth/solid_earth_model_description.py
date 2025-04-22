@@ -2,6 +2,7 @@
 Solid Earth model description class for preprocessing.
 """
 
+import dataclasses
 from json import load
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,7 @@ from scipy import interpolate
 
 from .database import save_base_model
 from .model_layer import ModelLayer
+from .parameters import SolidEarthParameters
 from .paths import SolidEarthModelPart, solid_earth_model_descriptions_path
 
 
@@ -22,7 +24,7 @@ class LayerParameters(BaseModel):
 
     r_inf: float
     r_sup: float
-    layer_name: Optional[float]
+    layer_name: Optional[str]
     layer_polynomials: dict[str, list[float | str]]
 
 
@@ -30,6 +32,14 @@ class LayerQuantity(BaseModel):
     """
     Describes what parameterizes a single quantity inside of a single layer.
     """
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
 
     x: numpy.ndarray
     polynomial: list[float | str]
@@ -55,8 +65,8 @@ class SolidEarthModelDescription:
     # model. The keys are the
     # variable names. They should include:
     #   - for elasticity part:
-    #       - Vs: S wave velocity (m.s^-1).
-    #       - Vp: P wave velocity (m.s^-1).
+    #       - v_s: S wave velocity (m.s^-1).
+    #       - v_p: P wave velocity (m.s^-1).
     #       - rho_0: Density (kg.m^-3).
     #   - for long term anelasticity part:
     #       - eta_m: Maxwell's viscosity (Pa.s).
@@ -104,7 +114,7 @@ class SolidEarthModelDescription:
         save_base_model(obj=self, name=name, path=path)
 
     def build_model_layer_list(
-        self, radius_unit: float, spline_number: int, real_crust: bool
+        self, solid_earth_parameters: SolidEarthParameters
     ) -> list[ModelLayer]:
         """
         Constructs the layers of an Earth description given model polynomials.
@@ -131,9 +141,7 @@ class SolidEarthModelDescription:
                         layer_name=layer_name,
                         layer_polynomials=layer_polynomials,
                     ),
-                    radius_unit=radius_unit,
-                    spline_number=spline_number,
-                    real_crust=real_crust,
+                    solid_earth_parameters=solid_earth_parameters,
                 )
             ]
         return model_layers
@@ -141,35 +149,38 @@ class SolidEarthModelDescription:
     def build_model_layer(
         self,
         layer_parameters: LayerParameters,
-        radius_unit: float,
-        spline_number: int,
-        real_crust: bool,
+        solid_earth_parameters: SolidEarthParameters,
     ) -> ModelLayer:
         """
         Constructs a layer of an Earth description given its model polynomials.
         """
 
-        x = (
-            numpy.linspace(layer_parameters.r_inf, layer_parameters.r_sup, spline_number)
-            / radius_unit
-        )
-        return ModelLayer(
+        model_layer = ModelLayer(
             name=layer_parameters.layer_name,
-            x_inf=x[0],
-            x_sup=x[-1],
-            splines={
-                variable_name: self.create_spline(
-                    layer_quantity=LayerQuantity(
-                        x=x,
-                        polynomial=polynomial,
-                    ),
-                    layer_name=layer_parameters.layer_name,
-                    real_crust=real_crust,
-                    crust_value=self.crust_values[variable_name],
-                )
-                for variable_name, polynomial in layer_parameters.layer_polynomials.items()
-            },
+            # Ensures to avoid the x = 0 singularity.
+            x_inf=max(
+                layer_parameters.r_inf,
+                solid_earth_parameters.numerical_parameters.integration_parameters.minimal_radius,
+            )
+            / solid_earth_parameters.model.radius_unit,
+            x_sup=layer_parameters.r_sup / solid_earth_parameters.model.radius_unit,
         )
+        x = model_layer.x_profile(
+            spline_number=solid_earth_parameters.numerical_parameters.spline_number
+        )
+        model_layer.splines = {
+            variable_name: self.create_spline(
+                layer_quantity=LayerQuantity(
+                    x=x,
+                    polynomial=polynomial,
+                ),
+                layer_name=layer_parameters.layer_name,
+                real_crust=solid_earth_parameters.model.real_crust,
+                crust_value=self.crust_values[variable_name],
+            )
+            for variable_name, polynomial in layer_parameters.layer_polynomials.items()
+        }
+        return model_layer
 
     def create_spline(
         self,

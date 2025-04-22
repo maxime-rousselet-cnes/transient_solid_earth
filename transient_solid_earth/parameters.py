@@ -51,13 +51,13 @@ class SolidEarthModelStructureParameters(BaseModel):
     Defines the solid Earth model parameters usefull for Y_i system integration.
     """
 
-    dynamic_term: bool  # Whether to use omega^2 terms or not.
+    dynamic_term: bool = True  # Whether to use omega^2 terms or not.
     # Number of layers under boundaries. If they are None: Automatic detection using elasticity
     # model layer names.
     # Number of layers under the Inner-Core Boundary.
-    below_icb_layers: Optional[int]  # Should be >= 0.
+    below_icb_layers: Optional[int] = None  # Should be >= 0.
     # Number of total layers under the Mantle-Core Boundary.
-    below_cmb_layers: Optional[int]  # Should be >= below_ICB_layers.
+    below_cmb_layers: Optional[int] = None  # Should be >= below_ICB_layers.
 
 
 DEFAULT_SOLID_EARTH_MODEL_STRUCTURE_PARAMETERS = SolidEarthModelStructureParameters()
@@ -68,15 +68,17 @@ class SolidEarthModelParameters(BaseModel):
     Parameterizes the solid Earth model.
     """
 
-    options: SolidEarthModelOptionParameters
+    options: SolidEarthModelOptionParameters = DEFAULT_SOLID_EARTH_MODEL_OPTION_PARAMETERS
     real_crust: (
         Optional[
             bool
         ]  # Whether to use 'real_crust' values or not. Usefull to easily switch from ocenanic
         # to continental crust parameters.
+    ) = None
+    radius_unit: Optional[float] = None  # Length unit (m).
+    structure_parameters: SolidEarthModelStructureParameters = (
+        DEFAULT_SOLID_EARTH_MODEL_STRUCTURE_PARAMETERS
     )
-    radius_unit: Optional[float]  # Length unit (m).
-    structure_parameters: SolidEarthModelStructureParameters
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
@@ -155,10 +157,12 @@ class SolidEarthNumericalParameters(BaseModel):
     Describes the solid Earth model discretization and algorithm on the radial axis.
     """
 
-    spline_number: int  # Should be >= max(2, 1 + polynomials degree).
-    spline_degree: int  # Should be >= 0.
-    integration_parameters: SolidEarthIntegrationNumericalParameters
-    n_max_green: int
+    spline_number: int = 10  # Should be >= max(2, 1 + polynomials degree).
+    spline_degree: int = 1  # Should be >= 0.
+    integration_parameters: SolidEarthIntegrationNumericalParameters = (
+        DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
+    )
+    n_max_green: int = 90
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
@@ -320,8 +324,8 @@ class LoadModelHistoryParameters(BaseModel):
     )
     start_date: int = 1900  # Usually 1900 for Frederikse GMSL data.
     case: str = "mean"  # Whether "lower", "mean" or "upper".
-    pole: LoadModelPoleParameters = (DEFAULT_LOAD_MODEL_POLE_PARAMETERS,)
-    lia: LoadModelLIAParameters = (DEFAULT_LOAD_MODEL_LIA_PARAMETERS,)
+    pole: LoadModelPoleParameters = DEFAULT_LOAD_MODEL_POLE_PARAMETERS
+    lia: LoadModelLIAParameters = DEFAULT_LOAD_MODEL_LIA_PARAMETERS
 
 
 DEFAULT_LOAD_MODEL_HISTORY_PARAMETERS = LoadModelHistoryParameters()
@@ -359,10 +363,10 @@ class LoadNumericalModelParameters(BaseModel):
     Defines the load model and algorithm parameters.
     """
 
-    numerical_parameters: LoadModelNumericalParameters
-    history: LoadModelHistoryParameters
-    signature: LoadModelSpatialSignatureParameters
-    options: LoadModelOptionParameters
+    numerical_parameters: LoadModelNumericalParameters = DEFAULT_LOAD_MODEL_NUMERICAL_PARAMETERS
+    history: LoadModelHistoryParameters = DEFAULT_LOAD_MODEL_HISTORY_PARAMETERS
+    signature: LoadModelSpatialSignatureParameters = DEFAULT_LOAD_MODEL_SPATIAL_SIGNATURE_PARAMETERS
+    options: LoadModelOptionParameters = DEFAULT_LOAD_MODEL_OPTION_PARAMETERS
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)

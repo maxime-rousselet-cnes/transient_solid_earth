@@ -2,14 +2,49 @@
 The class describes the radial quantities of a solid earth layer.
 """
 
+import dataclasses
 from typing import Callable, Optional
 
 import numpy
 from pydantic import BaseModel
 from scipy import integrate, interpolate
 from scipy.integrate import OdeSolution
+from scipy.interpolate import make_lsq_spline
 
 from .parameters import SolidEarthNumericalParameters
+
+
+def splprep_highdim(x: numpy.ndarray, u: numpy.ndarray, k: int = 3):
+    """
+    Simplified splprep for idim > 11.
+    Assumes s=0, and both x and u are specified.
+
+    Parameters:
+        x : array_like, shape (idim, N)
+            Input data points to fit.
+        u : array_like, shape (N,)
+            Parameter values (must be strictly increasing).
+        k : int
+            Degree of the spline. Default is 3.
+
+    Returns:
+        tck : tuple
+            (t, c_list, k) — shared knots, list of coefficient arrays, spline degree.
+    """
+
+    i_dim, spline_number = x.shape
+
+    # Interior knots — excluding start and end.
+    num_internal_knots = max(spline_number - (k + 1), 0)
+    if num_internal_knots <= 0:
+        raise ValueError("Not enough data points for the requested spline degree.")
+    t_internal = numpy.linspace(u[0], u[-1], num_internal_knots + 2)[1:-1]
+
+    # Full knot vector with boundary padding.
+    t = numpy.concatenate(([u[0]] * (k + 1), t_internal, [u[-1]] * (k + 1)))
+
+    c_list = [make_lsq_spline(u, x[dim], t, k=k).c for dim in range(i_dim)]
+    return (t, c_list, k)
 
 
 class ModelLayer(BaseModel):
@@ -20,31 +55,36 @@ class ModelLayer(BaseModel):
     name: Optional[str]
     x_inf: float
     x_sup: float
-    splines: dict[str, tuple[numpy.ndarray | float, numpy.ndarray | float, int]]
-    y_i_system: Optional[Callable[[numpy.ndarray], numpy.ndarray]]
+    splines: dict[str, tuple[numpy.ndarray | float, numpy.ndarray | float, int]] = {}
+    y_i_system: Optional[Callable[[numpy.ndarray], numpy.ndarray]] = None
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
 
     def evaluate(
         self,
         x: numpy.ndarray | float,
         variable: str,
         derivative_order: int = 0,
-        output_shape: Optional[tuple] = None,
     ) -> numpy.ndarray | float:
         """
         Evaluates some quantity polynomial spline over an array x.
         """
 
-        if output_shape is None:
-            output_shape = numpy.shape(x)
         if not isinstance(self.splines[variable][0], numpy.ndarray):  # Handles constant cases.
             return (
                 numpy.inf if self.splines[variable][0] == numpy.inf else self.splines[variable][0]
             ) * numpy.ones(  # Handles infinite cases.
-                shape=(output_shape)
+                shape=(numpy.shape(x))
             )
 
-        return interpolate.splev(x=x, tck=self.splines[variable], der=derivative_order).reshape(
-            output_shape
+        return numpy.array(
+            object=interpolate.splev(x=x, tck=self.splines[variable], der=derivative_order)
         )
 
     def x_profile(self, spline_number: int) -> numpy.ndarray:
@@ -65,12 +105,8 @@ class ModelLayer(BaseModel):
         Creates splines that interpolates the integration system's matrix.
         """
 
-        a_spline_real, _, _, _ = interpolate.splprep(
-            x=a_matrix.real.reshape(-1, spline_number), u=x, s=0
-        )
-        a_spline_imag, _, _, _ = interpolate.splprep(
-            x=a_matrix.imag.reshape(-1, spline_number), u=x, s=0
-        )
+        a_spline_real = splprep_highdim(x=a_matrix.real.reshape(-1, spline_number), u=x)
+        a_spline_imag = splprep_highdim(x=a_matrix.imag.reshape(-1, spline_number), u=x)
         self.splines.update({"A_real": a_spline_real, "A_imag": a_spline_imag})
         self.y_i_system = lambda t, y: numpy.dot(  # t as curvilign abscissa.
             a=numpy.array(
@@ -93,8 +129,9 @@ class ModelLayer(BaseModel):
         """
 
         lambda_complex = variables["lambda"]
-        mu_complex = variables["mu_imag"]
+        mu_complex = variables["mu"]
         x = variables["x"]
+        zeros = numpy.zeros(shape=x.shape)
 
         # Interpolate variables.
         rho_0 = self.evaluate(x=x, variable="rho_0")
@@ -110,16 +147,23 @@ class ModelLayer(BaseModel):
         self.update_matrix_splines(
             a_matrix=numpy.array(
                 [
-                    [-2.0 * lambda_complex * b / x, b, n_1 * lambda_complex * b / x, 0.0, 0.0, 0.0],
+                    [
+                        -2.0 * lambda_complex * b / x,
+                        b,
+                        n_1 * lambda_complex * b / x,
+                        zeros,
+                        zeros,
+                        zeros,
+                    ],
                     [
                         (-4.0 * g_0 * rho_0 / x) + (2.0 * c / (x**2)) + dyn_term,
                         -4.0 * mu_complex * b / x,
                         n_1 * (rho_0 * g_0 / x - c / (x**2)),
                         n_1 / x,
-                        0.0,
+                        zeros,
                         -rho_0,
                     ],
-                    [-1.0 / x, 0.0, 1.0 / x, 1.0 / mu_complex, 0.0, 0.0],
+                    [-1.0 / x, zeros, 1.0 / x, 1.0 / mu_complex, zeros, zeros],
                     [
                         rho_0 * g_0 / x - c / (x**2),
                         -lambda_complex * b / x,
@@ -131,10 +175,10 @@ class ModelLayer(BaseModel):
                         + dyn_term,
                         -3.0 / x,
                         -rho_0 / x,
-                        0.0,
+                        zeros,
                     ],
-                    [4.0 * rho_0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                    [0.0, 0.0, -4.0 * rho_0 * n_1 / x, 0.0, n_1 / (x**2), -2.0 / x],
+                    [4.0 * rho_0, zeros, zeros, zeros, zeros, numpy.ones(shape=x.shape)],
+                    [zeros, zeros, -4.0 * rho_0 * n_1 / x, zeros, n_1 / (x**2), -2.0 / x],
                 ],
                 dtype=complex,
             ),
@@ -160,7 +204,7 @@ class ModelLayer(BaseModel):
         self.update_matrix_splines(
             a_matrix=numpy.array(
                 [
-                    [c_1_1, 1.0],
+                    [c_1_1, numpy.ones(shape=rho_0.shape)],
                     [(n * (n + 1.0) / x**2) - 16.0 * rho_0 / (g_0 * x), (-2.0 / x) - c_1_1],
                 ],
                 dtype=complex,
@@ -171,7 +215,7 @@ class ModelLayer(BaseModel):
         )
 
     def integrate_y_i_system(
-        self, y_i: numpy.ndarray, solid_earth_numerical_parameters: SolidEarthNumericalParameters
+        self, y_i: numpy.ndarray, numerical_parameters: SolidEarthNumericalParameters
     ) -> numpy.ndarray:
         """
         Integrates the Y_i system from the bottom to the top of the layer.
@@ -182,10 +226,10 @@ class ModelLayer(BaseModel):
                 fun=self.y_i_system,
                 t_span=(self.x_inf, self.x_sup),
                 y0=y_i,
-                method=solid_earth_numerical_parameters.integration_parameters.method,
-                t_eval=solid_earth_numerical_parameters.integration_parameters.t_eval,
-                rtol=solid_earth_numerical_parameters.integration_parameters.rtol,
-                atol=solid_earth_numerical_parameters.integration_parameters.atol,
+                method=numerical_parameters.integration_parameters.method,
+                t_eval=numerical_parameters.integration_parameters.t_eval,
+                rtol=numerical_parameters.integration_parameters.rtol,
+                atol=numerical_parameters.integration_parameters.atol,
             )
 
         return solver.y[:, -1]

@@ -11,17 +11,17 @@
         6371000.0
     ],
     "variable_names": [
-        "Vs",
-        "Vp",
+        "v_s",
+        "v_p",
         "rho_0"
     ],
     "crust_values": {
-        "Vs": null,
-        "Vp": null,
+        "v_s": null,
+        "v_p": null,
         "rho_0": null
     },
     "polynomials": {
-        "Vs": [
+        "v_s": [
             [
                 3667.8,
                 0.0,
@@ -38,7 +38,7 @@
                 7264.65
             ]
         ],
-        "Vp": [
+        "v_p": [
             [
                 11262.2,
                 0.0,

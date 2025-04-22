@@ -71,7 +71,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 x_sup=layer.x_sup,
                 splines={
                     variable_name: layer.splines[variable_name]
-                    for variable_name in ["g_0", "rho_0", "mu_0", "lambda_0", "Vs", "Vp"]
+                    for variable_name in ["g_0", "rho_0", "mu_0", "lambda_0", "v_s", "v_p"]
                     + (
                         ["eta_m"]
                         if i_layer
@@ -187,26 +187,20 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         y_2 = INITIAL_Y_VECTOR[1, :].flatten()
         y_3 = INITIAL_Y_VECTOR[2, :].flatten()
 
-        # I - Integrate from Geocenter to CMB.
+        # I - Integrate from Geocenter to CMB for low degrees only.
         if self.n <= numerical_parameters.integration_parameters.n_max_for_sub_cmb_integration:
-
-            # Integrate from Geocenter to CMB for low degrees only.
-            self.model_layers[0].x_inf = (
-                numerical_parameters.integration_parameters.minimal_radius
-                / self.solid_earth_parameters.model.radius_unit
-            )
 
             # Integrates in the Inner-Core.
             for n_layer in range(
                 self.solid_earth_parameters.model.structure_parameters.below_icb_layers
             ):
-                y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
+                y_1 = self.model_layers[n_layer].integrate_y_i_system(
                     y_i=y_1, numerical_parameters=numerical_parameters
                 )
-                y_2, _ = self.model_layers[n_layer].integrate_y_i_system(
+                y_2 = self.model_layers[n_layer].integrate_y_i_system(
                     y_i=y_2, numerical_parameters=numerical_parameters
                 )
-                y_3, _ = self.model_layers[n_layer].integrate_y_i_system(
+                y_3 = self.model_layers[n_layer].integrate_y_i_system(
                     y_i=y_3, numerical_parameters=numerical_parameters
                 )
 
@@ -221,7 +215,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 self.solid_earth_parameters.model.structure_parameters.below_cmb_layers,
             ):
                 y = self.model_layers[n_layer].integrate_y_i_system(
-                    Y_i=y, numerical_parameters=numerical_parameters
+                    y_i=y, numerical_parameters=numerical_parameters
                 )
 
             # CMB Boundary conditions.
@@ -234,13 +228,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             self.solid_earth_parameters.model.structure_parameters.below_cmb_layers,
             len(self.model_layers),
         ):
-            y_1, _ = self.model_layers[n_layer].integrate_y_i_system(
+            y_1 = self.model_layers[n_layer].integrate_y_i_system(
                 y_i=y_1, numerical_parameters=numerical_parameters
             )
-            y_2, _ = self.model_layers[n_layer].integrate_y_i_system(
+            y_2 = self.model_layers[n_layer].integrate_y_i_system(
                 y_i=y_2, numerical_parameters=numerical_parameters
             )
-            y_3, _ = self.model_layers[n_layer].integrate_y_i_system(
+            y_3 = self.model_layers[n_layer].integrate_y_i_system(
                 y_i=y_3, numerical_parameters=numerical_parameters
             )
 

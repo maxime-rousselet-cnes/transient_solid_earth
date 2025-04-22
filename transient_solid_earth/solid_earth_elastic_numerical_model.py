@@ -61,7 +61,7 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
 
     def build(
         self,
-        solid_earth_model_part: SolidEarthModelPart = SolidEarthModelPart.ELASTICITY,
+        solid_earth_model_part: SolidEarthModelPart,
         overwrite_model: bool = True,
         save: bool = True,
     ):
@@ -70,7 +70,10 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
         """
 
         # Initializes description layers from model.
-        super().build(solid_earth_model_part=solid_earth_model_part, save=False)
+        super().build(
+            solid_earth_model_part=solid_earth_model_part,
+            save=False,
+        )
 
         # Updates basic fields.
         if (

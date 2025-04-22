@@ -218,7 +218,7 @@ def extract_param_paths(
     param_dict: dict[str, Any], prefix: tuple = ()
 ) -> list[tuple[tuple[str, ...], list]]:
     """
-    Recursively extract attribute paths and their list of values
+    Recursively extracts attribute paths and their list of values
     from a nested dictionary.
     Returns a list of (path_tuple, values).
     """

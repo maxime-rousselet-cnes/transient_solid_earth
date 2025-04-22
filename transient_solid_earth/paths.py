@@ -29,9 +29,9 @@ pole_data_path = inputs_path.joinpath("pole_data")
 masks_data_path = inputs_path.joinpath("masks")
 
 ### Solid Earth model descriptions.
-solid_earth_model_descriptions_root_path = data_path.joinpath("solid_earth_model_descriptions")
+solid_earth_model_descriptions_root_path = inputs_path.joinpath("solid_earth_model_descriptions")
 solid_earth_model_descriptions_path: dict[SolidEarthModelPart, Path] = {
-    model_part: solid_earth_model_descriptions_root_path.joinpath(model_part.name)
+    model_part: solid_earth_model_descriptions_root_path.joinpath(model_part.value)
     for model_part in SolidEarthModelPart
 }
 

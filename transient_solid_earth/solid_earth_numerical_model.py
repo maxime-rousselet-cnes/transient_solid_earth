@@ -77,14 +77,13 @@ class SolidEarthNumericalModel:
 
         # Loads (.JSON) model's file.
         model = SolidEarthModelDescription(
-            name=self.model_filename, solid_earth_model_part=solid_earth_model_part
+            name=self.model_filename,
+            solid_earth_model_part=solid_earth_model_part,
         )
 
         # Gets layers descriptions.
         self.model_layers = model.build_model_layer_list(
-            radius_unit=self.solid_earth_parameters.model.radius_unit,
-            spline_number=self.solid_earth_parameters.numerical_parameters.spline_number,
-            real_crust=self.solid_earth_parameters.model.real_crust,
+            solid_earth_parameters=self.solid_earth_parameters
         )
 
         # Eventually saves.
