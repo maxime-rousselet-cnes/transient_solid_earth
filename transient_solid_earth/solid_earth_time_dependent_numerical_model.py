@@ -35,7 +35,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         self,
         # Proper field parameters.
         solid_earth_full_numerical_model: SolidEarthFullNumericalModel,
-        log_frequency: float,  # Base 10 logarithm of the unitless frequency.
+        period: float,  # (yr)).
         n: int,
     ) -> None:
         """
@@ -46,15 +46,16 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             solid_earth_parameters=solid_earth_full_numerical_model.solid_earth_parameters,
         )
 
-        # Updates proper attributes.
-        self.n = n
-        frequency = numpy.inf if log_frequency == numpy.inf else 10.0**log_frequency
-        omega = numpy.inf if frequency == numpy.inf else 2 * numpy.pi * frequency
-        omega_j = numpy.inf if omega == numpy.inf else omega * 1.0j
-
         # Updates attributes from the full numerical model.
         self.x_cmb = solid_earth_full_numerical_model.x_cmb
+        self.period_unit = solid_earth_full_numerical_model.period_unit
         options = self.solid_earth_parameters.model.options
+
+        # Updates proper attributes.
+        self.n = n
+        unitless_frequency = numpy.inf if period == numpy.inf else self.period_unit / period
+        omega = numpy.inf if unitless_frequency == numpy.inf else 2 * numpy.pi * unitless_frequency
+        omega_j = numpy.inf if omega == numpy.inf else omega * 1.0j
 
         # Initializes the needed model layers.
         for i_layer, (variables, layer) in enumerate(
@@ -107,13 +108,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 ):
 
                     # Attenuation.
-                    if options.use_short_term_anelasticity:
+                    if options.use_short_term_anelasticity and unitless_frequency != numpy.inf:
 
                         # Updates with attenuation functions f_r and f_i.
                         f = f_attenuation_computing(
                             variables=variables,
                             omega=omega,
-                            frequency=frequency,
+                            frequency=unitless_frequency,
                             frequency_unit=1.0 / solid_earth_full_numerical_model.period_unit,
                             use_bounded_attenuation_functions=(
                                 options.use_bounded_attenuation_functions
@@ -134,7 +135,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                         )
 
                     # Long-term anelasticity.
-                    if options.use_long_term_anelasticity:
+                    if options.use_long_term_anelasticity and unitless_frequency != numpy.inf:
 
                         # Complex cut frequency variables.
                         variables.update(build_cutting_omegas(variables=variables))

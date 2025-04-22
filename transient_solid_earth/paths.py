@@ -38,7 +38,7 @@ solid_earth_model_descriptions_path: dict[SolidEarthModelPart, Path] = {
 ### Solid Earth numerical models.
 solid_earth_numerical_models_base_path = data_path.joinpath("solid_earth_numerical_models")
 solid_earth_numerical_models_path: dict[SolidEarthModelPart, Path] = {
-    model_part: solid_earth_numerical_models_base_path.joinpath(model_part.name)
+    model_part: solid_earth_numerical_models_base_path.joinpath(model_part.value)
     for model_part in SolidEarthModelPart
 }
 solid_earth_full_numerical_models_path = solid_earth_numerical_models_base_path.joinpath(
