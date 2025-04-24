@@ -72,3 +72,9 @@ harmonic_residual_trends_path = output_load_signal_trends_path.joinpath("residua
 
 ##### Anelastic load signals.
 anelastic_load_signals_path = output_load_signal_trends_path.joinpath("load_signal_trends")
+
+### SLURM logs.
+logs_path = outputs_path.joinpath("logs")
+
+#### Love numbers job array logs.
+logs_subpaths = {sub_path: logs_path.joinpath(sub_path) for sub_path in ["love_numbers"]}

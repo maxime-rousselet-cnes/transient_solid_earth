@@ -2,15 +2,16 @@
 RAM to file conversions.
 """
 
-from json import JSONEncoder, dump, load
+import json
 from pathlib import Path
+from time import sleep
 from typing import Any, Optional, TypedDict
 
 import numpy
 from pydantic import BaseModel
 
 
-class JSONSerialize(JSONEncoder):
+class JSONSerialize(json.JSONEncoder):
     """
     Handmade JSON encoder that correctly encodes special structures.
     """
@@ -20,7 +21,7 @@ class JSONSerialize(JSONEncoder):
             return o.tolist()
         if isinstance(o, BaseModel):
             return o.__dict__
-        return JSONEncoder().default(o)
+        return json.JSONEncoder().default(o)
 
 
 def save_base_model(obj: Any, name: str, path: Path):
@@ -38,7 +39,7 @@ def save_base_model(obj: Any, name: str, path: Path):
 
     # Saves the object.
     with open(path.joinpath(name + ".json"), "w", encoding="utf-8") as file:
-        dump(obj, fp=file, cls=JSONSerialize, indent=4)
+        json.dump(obj, fp=file, cls=JSONSerialize, indent=4)
 
 
 def load_base_model(
@@ -51,8 +52,14 @@ def load_base_model(
     """
 
     filepath = path.joinpath(name + ("" if ".json" in name else ".json"))
-    with open(filepath, "r", encoding="utf-8") as file:
-        loaded_content = load(fp=file)
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            loaded_content = json.load(fp=file)
+    except json.decoder.JSONDecodeError:
+        # Waits to avoid concurrent reading/writing.
+        sleep(1e-1)
+        # Then retries.
+        return load_base_model(name=name, path=path, base_model_type=base_model_type)
     return loaded_content if not base_model_type else base_model_type(**loaded_content)
 
 

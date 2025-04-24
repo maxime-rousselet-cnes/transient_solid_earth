@@ -2,7 +2,7 @@
 Base mathematical functions.
 """
 
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy
 from pyshtools import SHCoeffs

@@ -89,6 +89,10 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
                 self.solid_earth_parameters.model.structure_parameters.below_icb_layers = (
                     below_icb_layers
                 )
+        else:
+            below_cmb_layers = (
+                self.solid_earth_parameters.model.structure_parameters.below_cmb_layers
+            )
 
         self.x_cmb = self.model_layers[below_cmb_layers].x_inf
 
