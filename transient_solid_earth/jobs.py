@@ -50,7 +50,7 @@ def run_local_job(
     subprocess.Popen(
         [
             "python",
-            function_name + "_worker.py",
+            "worker_" + function_name + ".py",
             job_array_name,
             str(job_array_max_file_size),
             str(job_id),

@@ -3,11 +3,16 @@ Class that manages the solid Earth Y system integration from core to surface and
 numbers. An instance of this class represents the full solid Earth model at one given frequency.
 """
 
+from pathlib import Path
+from typing import Optional
+
 import numpy
 from scipy import interpolate
 
-from .constants import INITIAL_Y_VECTOR
+from .constants import INITIAL_Y_VECTOR, years_to_seconds
+from .database import save_base_model
 from .model_layer import ModelLayer
+from .paths import get_love_numbers_subpath
 from .rheological_formulas import (
     b_computing,
     build_cutting_omegas,
@@ -30,12 +35,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
     """
 
     n: int  # degree.
+    period: float  # (yr).
 
     def __init__(
         self,
         # Proper field parameters.
         solid_earth_full_numerical_model: SolidEarthFullNumericalModel,
-        period: float,  # (yr)).
+        period: float,  # (yr).
         n: int,
     ) -> None:
         """
@@ -44,6 +50,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
 
         super().__init__(
             solid_earth_parameters=solid_earth_full_numerical_model.solid_earth_parameters,
+            model_id=solid_earth_full_numerical_model.model_id,
         )
 
         # Updates attributes from the full numerical model.
@@ -53,7 +60,12 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
 
         # Updates proper attributes.
         self.n = n
-        unitless_frequency = numpy.inf if period == numpy.inf else self.period_unit / period
+        self.period = period
+        unitless_frequency = (
+            numpy.inf
+            if self.period == numpy.inf
+            else self.period_unit / years_to_seconds(period=self.period)
+        )
         omega = numpy.inf if unitless_frequency == numpy.inf else 2 * numpy.pi * unitless_frequency
         omega_j = numpy.inf if omega == numpy.inf else omega * 1.0j
 
@@ -173,9 +185,16 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             # Updates.
             self.model_layers += [model_layer]
 
+    def get_subpath(self) -> Path:
+        """
+        Generates the path to save the integration result.
+        """
+        return get_love_numbers_subpath(model_id=self.model_id, n=self.n, period=self.period)
+
     def integrate_y_i_systems(
         self,
-    ) -> numpy.ndarray[complex]:
+        save: bool = True,
+    ) -> Optional[numpy.ndarray[complex]]:
         """
         Integrates the unitless gravito-(an)elastic system from the Geocenter to the surface for the
         given degree, frequency and rheology.
@@ -239,5 +258,17 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 y_i=y_3, numerical_parameters=numerical_parameters
             )
 
-        # h_load, l_load, k_load, h_shear, l_shear, k_shear, h_potential, l_potential, k_potential.
-        return self.model_layers[-1].surface_solution(n=self.n, y_1_s=y_1, y_2_s=y_2, y_3_s=y_3)
+        # [
+        #   [h_load, l_load, k_load],
+        #   [h_shear, l_shear, k_shear],
+        #   [h_potential, l_potential, k_potential]
+        # ].
+        love_numbers = self.model_layers[-1].surface_solution(
+            n=self.n, y_1_s=y_1, y_2_s=y_2, y_3_s=y_3
+        )
+        if save:
+            path = self.get_subpath()
+            save_base_model(obj=love_numbers.real, name="real", path=path)
+            save_base_model(obj=love_numbers.imag, name="imag", path=path)
+            return None
+        return love_numbers

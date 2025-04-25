@@ -344,9 +344,9 @@ class ModelLayer(BaseModel):
         # the Earth vanishes (e.g. Merriam 1985).
         if n == 1:
             return numpy.array(  # Substracts k_load from h_load and l_load.
-                [love[0] - love[2], love[1] - love[2], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                [[love[0] - love[2], love[1] - love[2], 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
             )
 
         love[5] += 1.0  # No shear component on the unperturbed potential.
 
-        return love
+        return love.reshape((3, 3))

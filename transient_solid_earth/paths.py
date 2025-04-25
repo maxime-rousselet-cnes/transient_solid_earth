@@ -54,6 +54,14 @@ tables_path = outputs_path.joinpath("tables")
 ### Love numbers.
 love_numbers_path = outputs_path.joinpath("love_numbers")
 
+
+def get_love_numbers_subpath(model_id: str, n: int, period: float) -> Path:
+    """
+    Generates the path to save Y_i integration results for a given model.
+    """
+    return love_numbers_path.joinpath(model_id).joinpath(str(n)).joinpath(str(period))
+
+
 ### Load numerical models.
 loads_path = outputs_path.joinpath("loads")
 
@@ -77,4 +85,17 @@ anelastic_load_signals_path = output_load_signal_trends_path.joinpath("load_sign
 logs_path = outputs_path.joinpath("logs")
 
 #### Love numbers job array logs.
-logs_subpaths = {sub_path: logs_path.joinpath(sub_path) for sub_path in ["love_numbers"]}
+logs_subpaths = {
+    sub_path: logs_path.joinpath(sub_path) for sub_path in ["test_model", "love_numbers"]
+}
+
+#### Intermediate preprocessing/post-processing results.
+worker_information_subpaths = {
+    sub_path: log_subpath.joinpath("worker_informations")
+    for sub_path, log_subpath in logs_subpaths.items()
+}
+
+intermediate_result_subpaths = {
+    sub_path: log_subpath.joinpath("intermediate_results")
+    for sub_path, log_subpath in logs_subpaths.items()
+}

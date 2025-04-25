@@ -95,31 +95,37 @@ class SolidEarthModelParameters(BaseModel):
 
         super().__init__()
 
-        self.options = options
+        self.options = (
+            options
+            if isinstance(options, SolidEarthModelOptionParameters)
+            else SolidEarthModelOptionParameters(**options)
+        )
         self.real_crust = False if real_crust is None else real_crust
         self.radius_unit = EARTH_RADIUS if radius_unit is None else radius_unit
-        self.structure_parameters = structure_parameters
+        self.structure_parameters = (
+            structure_parameters
+            if isinstance(structure_parameters, SolidEarthModelStructureParameters)
+            else SolidEarthModelStructureParameters(**structure_parameters)
+        )
 
 
 DEFAULT_SOLID_EARTH_MODEL_PARAMETERS = SolidEarthModelParameters()
 
 
-class SolidEarthFrequencyDiscretizationParameters(BaseModel):
+class DiscretizationParameters(BaseModel):
     """
     Describes the initial solid Earth model discretization on the frequency axis and its
     convergence criteria.
     """
 
-    period_min_year: float = 1.0e-1  # High frequency limit (yr).
-    period_max_year: float = 1.0e6  # Low frequency limit (yr).
-    n_frequency_0: int = 30  # Minimal number of computed frequencies per degree.
-    max_tol: float = 0.05  # Maximal curvature criteria between orders 1 and 2.
-    decimals: int = 2  # Precision in log10(frequency / frequency_unit).
+    x_min: float = 1.0e-1
+    x_max: float = 1.0e5
+    n_0: int = 10  # Minimal number of evaluations.
+    maximum_tolerance: float = 0.05  # Curvature criterion.
+    exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
 
 
-DEFAULT_SOLID_EARTH_FREQUENCY_DISCRETIZATION_PARAMETERS = (
-    SolidEarthFrequencyDiscretizationParameters()
-)
+DEFAULT_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
 
 
 class SolidEarthDegreeDiscretizationParameters(BaseModel):
@@ -181,7 +187,11 @@ class SolidEarthNumericalParameters(BaseModel):
 
         self.spline_number = DEFAULT_SPLINE_NUMBER if spline_number is None else spline_number
         self.spline_degree = spline_degree
-        self.integration_parameters = integration_parameters
+        self.integration_parameters = (
+            integration_parameters
+            if isinstance(integration_parameters, SolidEarthIntegrationNumericalParameters)
+            else SolidEarthIntegrationNumericalParameters(**integration_parameters)
+        )
         self.n_max_green = n_max_green
 
 
@@ -203,15 +213,23 @@ class SolidEarthOptionParameters(BaseModel):
 DEFAULT_SOLID_EARTH_OPTION_PARAMETERS = SolidEarthOptionParameters()
 
 
+class ParallelComputingParameters(BaseModel):
+    """
+    Needed parameters to configure parallel computing tasks.
+    """
+
+    job_array_max_file_size: int = 1000
+
+
+DEFAULT_PARALLEL_COMPUTING_PARAMETERS = ParallelComputingParameters()
+
+
 class SolidEarthParameters(BaseModel):
     """
     Defines all solid Earth algorithm parameters.
     """
 
     model: SolidEarthModelParameters = DEFAULT_SOLID_EARTH_MODEL_PARAMETERS
-    frequency_discretization: SolidEarthFrequencyDiscretizationParameters = (
-        DEFAULT_SOLID_EARTH_FREQUENCY_DISCRETIZATION_PARAMETERS
-    )
     degree_discretization: SolidEarthDegreeDiscretizationParameters = (
         DEFAULT_SOLID_EARTH_DEGREE_DISCRETIZATION_PARAMETERS
     )
@@ -385,10 +403,26 @@ class LoadNumericalModelParameters(BaseModel):
 
         super().__init__()
 
-        self.numerical_parameters = numerical_parameters
-        self.history = history
-        self.signature = signature
-        self.options = options
+        self.numerical_parameters = (
+            numerical_parameters
+            if isinstance(numerical_parameters, LoadModelNumericalParameters)
+            else LoadModelNumericalParameters(**numerical_parameters)
+        )
+        self.history = (
+            history
+            if isinstance(history, LoadModelHistoryParameters)
+            else LoadModelHistoryParameters(**history)
+        )
+        self.signature = (
+            signature
+            if isinstance(signature, LoadModelSpatialSignatureParameters)
+            else LoadModelSpatialSignatureParameters(**signature)
+        )
+        self.options = (
+            options
+            if isinstance(options, LoadModelOptionParameters)
+            else LoadModelOptionParameters(**options)
+        )
         if "MSSA" in self.signature.file:
             self.numerical_parameters.ddk_filter_level = 7
         if not "DDK" in self.signature.file:
@@ -460,6 +494,8 @@ class Parameters(BaseModel):
         DEFAULT_SOLID_EARTH_VARIABLE_PARAMETERS
     )
     load_model_variabilities: dict[str, Any] = {}
+    parallel_computing: ParallelComputingParameters = DEFAULT_PARALLEL_COMPUTING_PARAMETERS
+    discretization: DiscretizationParameters = DEFAULT_DISCRETIZATION_PARAMETERS
 
 
 DEFAULT_PARAMETERS = Parameters()
@@ -470,7 +506,7 @@ def load_parameters(name: str = "parameters", path: Path = data_path) -> Paramet
     Gets parameters from (.JSON) file.
     """
 
-    return load_base_model(name=name, path=path, base_model_type=Parameters)
+    return Parameters.model_validate(load_base_model(name=name, path=path))
 
 
 # List of all possible non-elastic models.

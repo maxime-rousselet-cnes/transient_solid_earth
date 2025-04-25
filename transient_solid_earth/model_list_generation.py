@@ -196,16 +196,26 @@ def create_all_model_variations(
                     )
                 ] = SolidEarthFullNumericalModel(
                     solid_earth_parameters=solid_earth_parameters,
-                    elasticity_name=elastic_model_name,
-                    long_term_anelasticity_name=long_term_anelasticity_model_name,
-                    short_term_anelasticity_name=short_term_anelasticity_model_name,
+                    rheology={
+                        SolidEarthModelPart.ELASTICITY: elastic_model_name,
+                        SolidEarthModelPart.LONG_TERM_ANELASTICITY: (
+                            long_term_anelasticity_model_name
+                        ),
+                        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: (
+                            short_term_anelasticity_model_name
+                        ),
+                    },
                 )
         solid_earth_parameters.model.options = ELASTIC_SOLID_EARTH_MODEL_OPTION_PARAMETERS
         all_model_variations += [
             (
                 SolidEarthFullNumericalModel(
                     solid_earth_parameters=solid_earth_parameters,
-                    elasticity_name=elastic_model_name,
+                    rheology={
+                        SolidEarthModelPart.ELASTICITY: elastic_model_name,
+                        SolidEarthModelPart.LONG_TERM_ANELASTICITY: None,
+                        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: None,
+                    },
                 )
             ),
             list(all_anelastic_model_variations.values()),
@@ -214,7 +224,7 @@ def create_all_model_variations(
     return all_model_variations
 
 
-def extract_param_paths(
+def extract_parameter_paths(
     param_dict: dict[str, Any], prefix: tuple = ()
 ) -> list[tuple[tuple[str, ...], list]]:
     """
@@ -226,7 +236,7 @@ def extract_param_paths(
     for key, value in param_dict.items():
         current_path = prefix + (key,)
         if isinstance(value, dict):
-            paths.extend(extract_param_paths(value, current_path))
+            paths.extend(extract_parameter_paths(value, current_path))
         else:
             paths.append((current_path, value))
     return paths
@@ -241,14 +251,14 @@ def set_attr_by_path(obj: Any, path: tuple[str, Any], value: Any):
     setattr(obj, path[-1], value)
 
 
-def generate_object_variants_from_nested_param_grid(
+def generate_object_variants_from_nested_parameters_grid(
     load_model_parameters: LoadNumericalModelParameters, load_model_variabilities: dict[str, Any]
 ) -> list[LoadNumericalModelParameters]:
     """
     Creates all possible variations of load signal model parameters.
     """
 
-    paths_and_values = extract_param_paths(load_model_variabilities)
+    paths_and_values = extract_parameter_paths(load_model_variabilities)
     paths = [p for p, _ in paths_and_values]
     value_lists = [v for _, v in paths_and_values]
 

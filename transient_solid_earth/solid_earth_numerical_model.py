@@ -9,6 +9,7 @@ from numpy import array, inf, ndarray
 
 from .constants import DEFAULT_MODELS
 from .database import load_base_model, save_base_model
+from .model import Model
 from .model_layer import ModelLayer
 from .parameters import SolidEarthParameters
 from .paths import (
@@ -19,13 +20,12 @@ from .paths import (
 from .solid_earth_model_description import SolidEarthModelDescription
 
 
-class SolidEarthNumericalModel:
+class SolidEarthNumericalModel(Model):
     """
     Defines preprocessed model polynomial splines, layer by layer.
     """
 
     # Proper attributes.
-    model_id: Optional[str]
     model_filename: Optional[str]
     model_part: Optional[SolidEarthModelPart]
     x_cmb: Optional[float]
@@ -47,6 +47,8 @@ class SolidEarthNumericalModel:
         """
         Initializes either with None attributes or already built ones.
         """
+
+        super().__init__()
 
         # Initializes IDs.
         self.model_filename = (

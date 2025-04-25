@@ -8,7 +8,7 @@ import numpy
 from pydantic import BaseModel
 
 from .database import load_base_model
-from .parameters import LoadParameters, Parameters
+from .parameters import DEFAULT_LOAD_PARAMETERS, DEFAULT_PARAMETERS, LoadParameters, Parameters
 from .paths import input_load_signal_models_path, output_load_signal_trends_path
 
 
@@ -17,10 +17,13 @@ class InputLoadSignalModel(BaseModel):
     Defines a preprocessed load signal, ready for anelastic re-estimation.
     """
 
-    dates: numpy.ndarray[float]
-    frequencies: numpy.ndarray[float]
-    signal: numpy.ndarray[float]
-    load_parameters: LoadParameters
+    dates: numpy.ndarray[float] = numpy.zeros(shape=())
+    frequencies: numpy.ndarray[float] = numpy.zeros(shape=())
+    signal: numpy.ndarray[float] = numpy.zeros(shape=())
+    load_parameters: LoadParameters = DEFAULT_LOAD_PARAMETERS
+
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__(**kwargs)
 
     def __init__(
         self,
@@ -43,8 +46,11 @@ class OutputLoadSignalTrend(BaseModel):
     Defines a re-estimated signal's trend and the parameters that where needed for its processing.
     """
 
-    parameters: Parameters
-    trend: list[list[float]] | numpy.ndarray[float]
+    parameters: Parameters = DEFAULT_PARAMETERS
+    trend: list[list[float]] | numpy.ndarray[float] = numpy.zeros(shape=())
+
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__(**kwargs)
 
     def __init__(
         self,

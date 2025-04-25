@@ -1,3 +1,4 @@
-data/grace
-data/solid_earth_numerical_models
+grace
+solid_earth_numerical_models
+outputs
 __pycache__

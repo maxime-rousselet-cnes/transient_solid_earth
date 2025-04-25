@@ -1,9 +1,11 @@
 {
     "solid_earth": {
         "model": {
-            "use_long_term_anelasticity": true,
-            "use_short_term_anelasticity": true,
-            "use_bounded_attenuation_functions": true,
+            "options": {
+                "use_long_term_anelasticity": true,
+                "use_short_term_anelasticity": true,
+                "use_bounded_attenuation_functions": true
+            },
             "real_crust": false,
             "radius_unit": null,
             "structure_parameters": {
@@ -11,13 +13,6 @@
                 "below_icb_layers": null,
                 "below_cmb_layers": null
             }
-        },
-        "frequency_discretization": {
-            "period_min_year": 1e-1,
-            "period_max_year": 1e6,
-            "n_frequency_0": 30,
-            "max_tol": 0.05,
-            "decimals": 2
         },
         "degree_discretization": {
             "steps": [
@@ -222,5 +217,16 @@
                 "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
             ]
         }
-    }
+    },
+    "parallel_computing": {
+        "job_array_max_file_size": 1000
+    },
+    "discretization": {
+        "x_min": 1e-2,
+        "x_max": 1e6,
+        "n_0": 10,
+        "maximum_tolerance": 5e-2,
+        "exponentiation_base": 10.0
+    },
+    "test": true
 }

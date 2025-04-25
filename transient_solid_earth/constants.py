@@ -48,6 +48,15 @@ G = 6.67430e-11
 # s.y^-1
 SECONDS_PER_YEAR = 365.25 * 86400
 
+
+def years_to_seconds(period: float) -> float:
+    """
+    Time unit conversion.
+    """
+
+    return SECONDS_PER_YEAR * period
+
+
 # For integration.
 INITIAL_Y_VECTOR = numpy.array(
     object=[
