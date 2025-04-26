@@ -57,7 +57,7 @@ def load_base_model(
             loaded_content = json.load(fp=file)
     except json.decoder.JSONDecodeError:
         # Waits to avoid concurrent reading/writing.
-        sleep(1e-1)
+        sleep(1e-3)
         # Then retries.
         return load_base_model(name=name, path=path, base_model_type=base_model_type)
     return loaded_content if not base_model_type else base_model_type(**loaded_content)
