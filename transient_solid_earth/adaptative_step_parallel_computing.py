@@ -3,6 +3,8 @@ Describes the loop using adaptatives step for all considered rheologies.
 """
 
 import math
+import multiprocessing
+import threading
 from copy import deepcopy
 from itertools import product
 from typing import Optional, Type
@@ -106,6 +108,7 @@ class ProcessCatalog:
         i_job_array: int,
         job_array_max_file_size: int,
         exponentiation_base: float,
+        global_semaphore: threading.Semaphore,
     ) -> int:
         """
         Schedules jobs for a job array. Empties 'to_process' and updates 'in_process'.
@@ -151,6 +154,7 @@ class ProcessCatalog:
             function_name=self.function_name,
             job_array_name=str(i_job_array),
             job_array_max_file_size=job_array_max_file_size,
+            semaphore=global_semaphore,
         )
 
         # Updates the job array ID.
@@ -289,6 +293,7 @@ def adaptative_step_parallel_computing_loop(
 
     # Initializes data structures.
     i_job_array = 0
+    global_semaphore = threading.Semaphore(value=multiprocessing.cpu_count() - 1)
     process_catalog = ProcessCatalog(
         fixed_parameter_list=fixed_parameter_list,
         rheologies=rheologies,
@@ -313,6 +318,7 @@ def adaptative_step_parallel_computing_loop(
                 i_job_array=i_job_array,
                 job_array_max_file_size=parameters.parallel_computing.job_array_max_file_size,
                 exponentiation_base=parameters.discretization[function_name].exponentiation_base,
+                global_semaphore=global_semaphore,
             )
 
         # Gets results if they are finished.

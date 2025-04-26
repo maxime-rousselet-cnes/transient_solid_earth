@@ -3,12 +3,11 @@
 Describes how to launch non-blocking parallel computing either with sbatch or locally.
 """
 
-import multiprocessing
 import os
 import shutil
 import subprocess
 import threading
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # <-- Note: THREAD pool, not PROCESS pool!
 
 from .paths import logs_subpaths
 
@@ -23,10 +22,8 @@ def submit_slurm_jobs(
     Submits a job array using sbatch.
     """
 
-    # Ensures the logs directory exists.
     os.makedirs(logs_subpaths[function_name], exist_ok=True)
 
-    # Uses Popen to avoid blocking.
     subprocess.Popen(
         [
             "sbatch",
@@ -45,8 +42,6 @@ def run_local_job(
     """
     Runs locally a single job in background.
     """
-
-    # Uses Popen to avoid blocking.
     subprocess.Popen(
         [
             "python",
@@ -58,21 +53,40 @@ def run_local_job(
     )
 
 
+def run_local_job_with_semaphore(
+    semaphore: threading.Semaphore,
+    function_name: str,
+    job_array_name: str,
+    job_array_max_file_size: int,
+    job_id: int,
+):
+    """
+    Runs a single job while respecting a global semaphore limit.
+    """
+    with semaphore:
+        run_local_job(function_name, job_array_name, job_array_max_file_size, job_id)
+
+
 def run_local_job_array_in_background(
     n_jobs: int,
     function_name: str,
     job_array_name: str,
     job_array_max_file_size: int,
-    max_parallel: int,
+    semaphore: threading.Semaphore,
 ):
     """
-    Runs locally a job array in background.
+    Runs locally a job array in background with a concurrency limit.
     """
 
-    with ProcessPoolExecutor(max_workers=max_parallel) as executor:
+    with ThreadPoolExecutor(max_workers=min(n_jobs, 1000)) as executor:  # threads are cheap
         for i in range(n_jobs):
             executor.submit(
-                run_local_job, function_name, job_array_name, job_array_max_file_size, i
+                run_local_job_with_semaphore,
+                semaphore,
+                function_name,
+                job_array_name,
+                job_array_max_file_size,
+                i,
             )
 
 
@@ -100,13 +114,13 @@ def run_job_array(
     function_name: str,
     job_array_name: str,
     job_array_max_file_size: int,
+    semaphore: threading.Semaphore,
 ) -> None:
     """
     Runs parallel computing without blocking.
     """
 
     if is_slurm_available():
-        # Run SLURM job submission in a background thread
         thread = threading.Thread(
             target=submit_slurm_jobs,
             args=(n_jobs, function_name, job_array_name, job_array_max_file_size),
@@ -121,7 +135,7 @@ def run_job_array(
                 function_name,
                 job_array_name,
                 job_array_max_file_size,
-                multiprocessing.cpu_count(),  # Gets the number of available cores.
+                semaphore,
             ),
             daemon=True,
         )
