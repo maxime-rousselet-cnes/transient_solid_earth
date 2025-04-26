@@ -42,7 +42,6 @@
         },
         "options": {
             "compute_green": true,
-            "load_numerical_model": false,
             "model_id": null,
             "save": true,
             "overwrite_model": false
@@ -133,18 +132,11 @@
             ],
             "long_term_anelasticity": [
                 "VM7",
-                "VM5a",
-                "Mao_Zhong",
-                "Lau",
-                "Lambeck_2017",
-                "Caron"
+                "VM5a"
             ],
             "short_term_anelasticity": [
                 "Benjamin_Q_Resovsky",
-                "Benjamin_Q_PAR3P",
-                "Benjamin_Q_PREM",
-                "Benjamin_Q_QL6",
-                "Benjamin_Q_QM1"
+                "Benjamin_Q_PAR3P"
             ]
         },
         "rheological_parameters": {
@@ -188,14 +180,12 @@
         "history": {
             "case": [
                 "mean",
-                "lower",
-                "upper"
+                "lower"
             ],
             "pole": {
                 "case": [
                     "mean",
-                    "lower",
-                    "upper"
+                    "lower"
                 ]
             },
             "lia": {
@@ -212,8 +202,6 @@
             ],
             "load_spatial_behaviour_file": [
                 "GFZ",
-                "JPL",
-                "CSR",
                 "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
             ]
         }
@@ -222,11 +210,27 @@
         "job_array_max_file_size": 1000
     },
     "discretization": {
-        "x_min": 1e-2,
-        "x_max": 1e6,
-        "n_0": 10,
-        "maximum_tolerance": 5e-2,
-        "exponentiation_base": 10.0
+        "love_numbers": {
+            "x_min": 1.0e-2,
+            "x_max": 1.0e6,
+            "n_0": 3,
+            "maximum_tolerance": 5.0e-3,
+            "exponentiation_base": 10.0
+        },
+        "test_models": {
+            "x_min": 1.0e-2,
+            "x_max": 1.0e2,
+            "n_0": 3,
+            "maximum_tolerance": 5.0e-3,
+            "exponentiation_base": 10.0
+        },
+        "green_functions": {
+            "x_min": 1.0e-10,
+            "x_max": 180.0,
+            "n_0": 3,
+            "maximum_tolerance": 5.0e-3,
+            "exponentiation_base": 10.0
+        }
     },
     "test": true
 }

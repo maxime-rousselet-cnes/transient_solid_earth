@@ -21,7 +21,7 @@ def sigmoid(x):
         return numpy.nan_to_num(x=1 / (1 + numpy.exp(-x)), nan=0.0)
 
 
-class TestModelRheology(BaseModel):
+class TestModelsRheology(BaseModel):
     """
     Test.
     """
@@ -38,16 +38,16 @@ class TestModelRheology(BaseModel):
         return "_".join([str(self.alpha), str(self.beta), str(self.gamma), str(self.x_0)])
 
 
-DEFAULT_TEST_MODEL_RHEOLOGY = TestModelRheology()
+DEFAULT_TEST_MODELS_RHEOLOGY = TestModelsRheology()
 
 
-class TestModel(BaseModel):
+class TestModels(BaseModel):
     """
     Test.
     """
 
     model_id: str = ""
-    rheology: TestModelRheology = DEFAULT_TEST_MODEL_RHEOLOGY
+    rheology: TestModelsRheology = DEFAULT_TEST_MODELS_RHEOLOGY
     real_crust: Optional[bool] = None
 
     def __init_subclass__(cls, **kwargs):
@@ -56,7 +56,7 @@ class TestModel(BaseModel):
     def __init__(
         self,
         solid_earth_parameters: Optional[SolidEarthParameters] = None,
-        rheology: Optional[TestModelRheology | dict] = None,
+        rheology: Optional[TestModelsRheology | dict] = None,
         model_id: Optional[str] = None,
         real_crust: Optional[bool] = None,
     ) -> None:
@@ -64,7 +64,7 @@ class TestModel(BaseModel):
         super().__init__()
 
         if solid_earth_parameters:
-            self.rheology = TestModelRheology()
+            self.rheology = TestModelsRheology()
             self.rheology.alpha = rheology["alpha"]
             self.rheology.beta = rheology["beta"]
             self.rheology.gamma = rheology["gamma"]
@@ -72,12 +72,12 @@ class TestModel(BaseModel):
             self.model_id = self.rheology.model_id()
             self.real_crust = solid_earth_parameters.model.real_crust
             save_base_model(
-                obj=self, name=self.model_id, path=logs_subpaths["test_model"].joinpath("models")
+                obj=self, name=self.model_id, path=logs_subpaths["test_models"].joinpath("models")
             )
 
         else:
             self.model_id = model_id
-            self.rheology = TestModelRheology(**rheology)
+            self.rheology = TestModelsRheology(**rheology)
             self.real_crust = real_crust
 
     def process(self, variable_parameter: float) -> numpy.ndarray:

@@ -8,23 +8,13 @@ from itertools import product
 from typing import Optional, Type
 
 import numpy
-from pydantic import BaseModel
 
 from .database import load_base_model, save_base_model
 from .jobs import run_job_array
 from .model import MODEL
 from .parameters import DEFAULT_PARAMETERS, Parameters, SolidEarthParameters
 from .paths import intermediate_result_subpaths, worker_information_subpaths
-
-
-class WorkerInformation(BaseModel):
-    """
-    Describes the informations a worker needs to process its task.
-    """
-
-    model_id: str
-    fixed_parameter: float
-    variable_parameter: float
+from .worker_parser import WorkerInformation
 
 
 def add_sorted(result_dict: dict[str, list], x: float, values: list[float]) -> dict[str, list]:
@@ -50,8 +40,8 @@ def add_sorted(result_dict: dict[str, list], x: float, values: list[float]) -> d
 
 class ProcessCatalog:
     """
-    Recap of all processes to be launched, in process, just processed and already processed.
-    Manages the whole adaptative step parallel computing loop.
+    Recap of all processes to be launched, in process, just processed and whose results have been
+    stored. Manages the whole adaptative step parallel computing loop.
     """
 
     # Actual process logs.
@@ -108,7 +98,7 @@ class ProcessCatalog:
 
         for rheology, fixed_parameter in product(self.rheologies, fixed_parameter_list):
             self.model_ids[(tuple(rheology.values()), fixed_parameter)] = model(
-                solid_earth_parameters=solid_earth_parameters, rheology=rheology
+                solid_earth_parameters=deepcopy(solid_earth_parameters), rheology=rheology
             ).model_id
 
     def schedule_jobs(
@@ -211,7 +201,8 @@ class ProcessCatalog:
 
     def refine_discretization(self, maximum_tolerance: float, exponentiation_base: float) -> None:
         """
-        Refines the discretization of the variable parameter for a rheology and a fixed_parameter.
+        Refines the discretization on the variable parameter for a rheology and a fixed_parameter.
+        Stops when the result is approximated everywhere by its linear interpolation.
         """
 
         rheology, fixed_parameter = self.just_processed.pop()
@@ -286,14 +277,14 @@ def adaptative_step_parallel_computing_loop(
     # Generates the loop's initial discretization.
     initial_variable_parameter_list = numpy.linspace(
         start=math.log(
-            parameters.discretization.x_min,
-            parameters.discretization.exponentiation_base,
+            parameters.discretization[function_name].x_min,
+            parameters.discretization[function_name].exponentiation_base,
         ),
         stop=math.log(
-            parameters.discretization.x_max,
-            parameters.discretization.exponentiation_base,
+            parameters.discretization[function_name].x_max,
+            parameters.discretization[function_name].exponentiation_base,
         ),
-        num=parameters.discretization.n_0,
+        num=parameters.discretization[function_name].n_0,
     )
 
     # Initializes data structures.
@@ -321,18 +312,18 @@ def adaptative_step_parallel_computing_loop(
             i_job_array = process_catalog.schedule_jobs(
                 i_job_array=i_job_array,
                 job_array_max_file_size=parameters.parallel_computing.job_array_max_file_size,
-                exponentiation_base=parameters.discretization.exponentiation_base,
+                exponentiation_base=parameters.discretization[function_name].exponentiation_base,
             )
 
         # Gets results if they are finished.
         process_catalog.get_results(
-            exponentiation_base=parameters.discretization.exponentiation_base
+            exponentiation_base=parameters.discretization[function_name].exponentiation_base
         )
 
         while process_catalog.just_processed:
 
             # Tests the stop cirterion on newly available results.
             process_catalog.refine_discretization(
-                maximum_tolerance=parameters.discretization.maximum_tolerance,
-                exponentiation_base=parameters.discretization.exponentiation_base,
+                maximum_tolerance=parameters.discretization[function_name].maximum_tolerance,
+                exponentiation_base=parameters.discretization[function_name].exponentiation_base,
             )

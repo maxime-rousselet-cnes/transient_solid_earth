@@ -8,7 +8,12 @@ from typing import Optional
 import numpy
 from scipy import interpolate
 
-from .constants import ASYMPTOTIC_MU_RATIO_DECIMALS, LAYER_DECIMALS, SECONDS_PER_YEAR
+from .constants import (
+    ASYMPTOTIC_MU_RATIO_DECIMALS,
+    DEFAULT_MODELS,
+    LAYER_DECIMALS,
+    SECONDS_PER_YEAR,
+)
 from .model_layer import ModelLayer
 from .parameters import DEFAULT_SOLID_EARTH_PARAMETERS, SolidEarthParameters
 from .paths import SolidEarthModelPart
@@ -17,6 +22,7 @@ from .separators import (
     LAYER_NAMES_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR,
+    UNUSED_MODEL_PART_DEFAULT_NAME,
 )
 from .solid_earth_elastic_numerical_model import SolidEarthElasticNumericalModel
 from .solid_earth_numerical_model import SolidEarthNumericalModel
@@ -38,6 +44,56 @@ def solid_earth_full_numerical_model_id_from_part_names(
             )
         )
     )
+
+
+def initialize_model_parts(
+    rheology: dict[SolidEarthModelPart, Optional[str]], solid_earth_parameters: SolidEarthParameters
+) -> dict[SolidEarthModelPart, SolidEarthNumericalModel | SolidEarthElasticNumericalModel]:
+    """
+    Initializes all model parts with their corresponding parameters.
+    """
+
+    model_parts: dict[
+        SolidEarthModelPart, SolidEarthNumericalModel | SolidEarthElasticNumericalModel
+    ] = {}
+
+    for solid_earth_model_part, (_, part_name) in zip(SolidEarthModelPart, rheology.items()):
+
+        # Initializes.
+        if solid_earth_model_part == SolidEarthModelPart.ELASTICITY:
+            model_parts[solid_earth_model_part] = SolidEarthElasticNumericalModel(
+                solid_earth_parameters=solid_earth_parameters,
+                model_id=rheology[SolidEarthModelPart.ELASTICITY],
+                model_filename=rheology[SolidEarthModelPart.ELASTICITY],
+            )
+        else:
+            model_parts[solid_earth_model_part] = SolidEarthNumericalModel(
+                solid_earth_parameters=solid_earth_parameters,
+                model_id=part_name.replace(
+                    UNUSED_MODEL_PART_DEFAULT_NAME, DEFAULT_MODELS[solid_earth_model_part]
+                ),
+                model_filename=part_name.replace(
+                    UNUSED_MODEL_PART_DEFAULT_NAME, DEFAULT_MODELS[solid_earth_model_part]
+                ),
+                solid_earth_model_part=solid_earth_model_part,
+            )
+
+        # Eventually loads the model part ...
+        if (not solid_earth_parameters.options.overwrite_model) and model_parts[
+            solid_earth_model_part
+        ].get_path().joinpath(model_parts[solid_earth_model_part].model_id).is_file():
+
+            model_parts[solid_earth_model_part].load()
+
+        # ... or builds it.
+        else:
+            model_parts[solid_earth_model_part].build(
+                solid_earth_model_part=solid_earth_model_part,
+                overwrite_model=True,
+                save=solid_earth_parameters.options.save,
+            )
+
+    return model_parts
 
 
 class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
@@ -99,23 +155,90 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         self,
         solid_earth_parameters: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS,
         rheology: Optional[dict[SolidEarthModelPart, Optional[str]]] = None,
+        model_id: Optional[str] = None,
+        load_numerical_model: bool = False,
     ) -> None:
 
-        # Manages defaults.
-        if not rheology:
+        # In case the model has to be loaded.
+        if model_id:
+
+            solid_earth_parameters.options.model_id = model_id
+
+        else:
+
+            # Manages defaults.
             rheology = (
-                {
+                rheology
+                if rheology
+                else {
                     SolidEarthModelPart.ELASTICITY: None,
                     SolidEarthModelPart.LONG_TERM_ANELASTICITY: None,
                     SolidEarthModelPart.SHORT_TERM_ANELASTICITY: None,
-                },
+                }
             )
-        if rheology[SolidEarthModelPart.ELASTICITY] is None:
-            rheology[SolidEarthModelPart.ELASTICITY] = "PREM"
-        if rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY] is None:
-            rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY] = "uniform"
-        if rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY] is None:
-            rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY] = "uniform"
+
+            rheology[SolidEarthModelPart.ELASTICITY] = (
+                rheology[SolidEarthModelPart.ELASTICITY]
+                if rheology[SolidEarthModelPart.ELASTICITY]
+                else DEFAULT_MODELS[SolidEarthModelPart.ELASTICITY]
+            )
+            rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY] = (
+                rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY]
+                if rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY]
+                else DEFAULT_MODELS[SolidEarthModelPart.LONG_TERM_ANELASTICITY]
+            )
+            rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY] = (
+                rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY]
+                if rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY]
+                else DEFAULT_MODELS[SolidEarthModelPart.SHORT_TERM_ANELASTICITY]
+            )
+
+            solid_earth_parameters.model.options.use_long_term_anelasticity = (
+                solid_earth_parameters.model.options.use_long_term_anelasticity
+                and (
+                    rheology[SolidEarthModelPart.LONG_TERM_ANELASTICITY]
+                    != UNUSED_MODEL_PART_DEFAULT_NAME
+                )
+            )
+            solid_earth_parameters.model.options.use_short_term_anelasticity = (
+                solid_earth_parameters.model.options.use_short_term_anelasticity
+                and (
+                    rheology[SolidEarthModelPart.SHORT_TERM_ANELASTICITY]
+                    != UNUSED_MODEL_PART_DEFAULT_NAME
+                )
+            )
+
+            # Manages the option cases, including the elastic case.
+            if (not solid_earth_parameters.model.options.use_long_term_anelasticity) and (
+                not solid_earth_parameters.model.options.use_short_term_anelasticity
+            ):
+                solid_earth_parameters.options.model_id = (
+                    solid_earth_full_numerical_model_id_from_part_names(
+                        elasticity_name=rheology[SolidEarthModelPart.ELASTICITY],
+                        long_term_anelasticity_name=UNUSED_MODEL_PART_DEFAULT_NAME,
+                        short_term_anelasticity_name=UNUSED_MODEL_PART_DEFAULT_NAME,
+                    )
+                )
+            elif not solid_earth_parameters.model.options.use_long_term_anelasticity:
+                solid_earth_parameters.options.model_id = (
+                    solid_earth_full_numerical_model_id_from_part_names(
+                        elasticity_name=rheology[SolidEarthModelPart.ELASTICITY],
+                        long_term_anelasticity_name=UNUSED_MODEL_PART_DEFAULT_NAME,
+                        short_term_anelasticity_name=rheology[
+                            SolidEarthModelPart.SHORT_TERM_ANELASTICITY
+                        ],
+                    )
+                )
+            elif not solid_earth_parameters.model.options.use_short_term_anelasticity:
+                solid_earth_parameters.options.model_id = (
+                    solid_earth_full_numerical_model_id_from_part_names(
+                        elasticity_name=rheology[SolidEarthModelPart.ELASTICITY],
+                        long_term_anelasticity_name=rheology[
+                            SolidEarthModelPart.LONG_TERM_ANELASTICITY
+                        ],
+                        short_term_anelasticity_name=UNUSED_MODEL_PART_DEFAULT_NAME,
+                    )
+                )
 
         # Updates inherited fields.
         super().__init__(
@@ -136,10 +259,7 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         )
 
         # Eventually loads already preprocessed full model...
-        if (
-            solid_earth_parameters.options.load_numerical_model
-            and self.get_path().joinpath(self.model_id + ".json").is_file()
-        ):
+        if load_numerical_model and self.get_path().joinpath(self.model_id + ".json").is_file():
 
             self.load()
 
@@ -147,43 +267,9 @@ class SolidEarthFullNumericalModel(SolidEarthNumericalModel):
         else:
 
             # Initializes all 3 numerical model parts.
-            model_parts: dict[
-                SolidEarthModelPart, SolidEarthNumericalModel | SolidEarthElasticNumericalModel
-            ] = {}
-
-            for solid_earth_model_part, (_, part_name) in zip(
-                SolidEarthModelPart, rheology.items()
-            ):
-
-                # Initializes.
-                if solid_earth_model_part == SolidEarthModelPart.ELASTICITY:
-                    model_parts[solid_earth_model_part] = SolidEarthElasticNumericalModel(
-                        solid_earth_parameters=solid_earth_parameters,
-                        model_id=rheology[SolidEarthModelPart.ELASTICITY],
-                        model_filename=rheology[SolidEarthModelPart.ELASTICITY],
-                    )
-                else:
-                    model_parts[solid_earth_model_part] = SolidEarthNumericalModel(
-                        solid_earth_parameters=solid_earth_parameters,
-                        model_id=part_name,
-                        model_filename=part_name,
-                        solid_earth_model_part=solid_earth_model_part,
-                    )
-
-                # Eventually loads the model part ...
-                if (not solid_earth_parameters.options.overwrite_model) and model_parts[
-                    solid_earth_model_part
-                ].get_path().joinpath(model_parts[solid_earth_model_part].model_id).is_file():
-
-                    model_parts[solid_earth_model_part].load()
-
-                # ... or builds it.
-                else:
-                    model_parts[solid_earth_model_part].build(
-                        solid_earth_model_part=solid_earth_model_part,
-                        overwrite_model=True,
-                        save=solid_earth_parameters.options.save,
-                    )
+            model_parts = initialize_model_parts(
+                rheology=rheology, solid_earth_parameters=solid_earth_parameters
+            )
 
             # Updates fields from elasticity model.
             self.x_cmb = model_parts[SolidEarthModelPart.ELASTICITY].x_cmb

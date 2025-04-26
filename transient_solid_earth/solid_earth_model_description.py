@@ -85,7 +85,6 @@ class SolidEarthModelDescription:
         """
         Loads the model file while managing infinite values.
         """
-
         # Loads file.
         filepath = solid_earth_model_descriptions_path[solid_earth_model_part].joinpath(
             name + ("" if ".json" in name else ".json")
@@ -111,7 +110,7 @@ class SolidEarthModelDescription:
         Method to save in (.JSON) file.
         """
 
-        save_base_model(obj=self, name=name, path=path)
+        save_base_model(obj=self.__dict__, name=name, path=path)
 
     def build_model_layer_list(
         self, solid_earth_parameters: SolidEarthParameters

@@ -21,6 +21,7 @@ from .rheological_formulas import (
     m_prime_computing,
     mu_computing,
 )
+from .separators import is_elastic
 from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
 from .solid_earth_numerical_model import SolidEarthNumericalModel
 
@@ -60,7 +61,9 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
 
         # Updates proper attributes.
         self.n = n
-        self.period = period
+        self.period = (
+            numpy.inf if is_elastic(model_id=solid_earth_full_numerical_model.model_id) else period
+        )
         unitless_frequency = (
             numpy.inf
             if self.period == numpy.inf

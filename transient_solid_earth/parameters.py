@@ -114,18 +114,23 @@ DEFAULT_SOLID_EARTH_MODEL_PARAMETERS = SolidEarthModelParameters()
 
 class DiscretizationParameters(BaseModel):
     """
-    Describes the initial solid Earth model discretization on the frequency axis and its
-    convergence criteria.
+    Describes and initial discretization and its stop criterion.
     """
 
-    x_min: float = 1.0e-1
-    x_max: float = 1.0e5
-    n_0: int = 10  # Minimal number of evaluations.
-    maximum_tolerance: float = 0.05  # Curvature criterion.
+    x_min: float = 1.0e-2
+    x_max: float = 1.0e6
+    n_0: int = 3  # Minimal number of evaluations. Should be >=3.
+    maximum_tolerance: float = 5.0e-3  # Curvature criterion.
     exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
 
 
-DEFAULT_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
+DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
+DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
+    x_min=1.0e-2, x_max=1.0e2, n_0=3, maximum_tolerance=5e-3, exponentiation_base=10.0
+)
+DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
+    x_min=1.0e-10, x_max=180.0, n_0=3, maximum_tolerance=5e-3, exponentiation_base=10.0
+)
 
 
 class SolidEarthDegreeDiscretizationParameters(BaseModel):
@@ -204,7 +209,6 @@ class SolidEarthOptionParameters(BaseModel):
     """
 
     compute_green: bool = True
-    load_numerical_model: bool = False
     model_id: Optional[str] = None
     save: bool = True
     overwrite_model: bool = False
@@ -469,15 +473,13 @@ class SolidEarthVariableParameters(BaseModel):
             "Benjamin_Q_QM1",
         ],
     }
-    rheological_parameters: dict[str, dict[str, dict[str, list[list[float]]]]] = (
-        {
-            "long_term_anelasticity": {"eta_m": {"ASTHENOSPHERE": [[3e18], [3e19]]}},
-            "short_term_anelasticity": {
-                "asymptotic_mu_ratio": {"MANTLE": [[0.1], [0.2]]},
-                "alpha": {"MANTLE": [[0.223], [0.297]]},
-            },
+    rheological_parameters: dict[SolidEarthModelPart, dict[str, dict[str, list[list[float]]]]] = {
+        SolidEarthModelPart.LONG_TERM_ANELASTICITY: {"eta_m": {"ASTHENOSPHERE": [[3e18], [3e19]]}},
+        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: {
+            "asymptotic_mu_ratio": {"MANTLE": [[0.1], [0.2]]},
+            "alpha": {"MANTLE": [[0.223], [0.297]]},
         },
-    )
+    }
 
 
 DEFAULT_SOLID_EARTH_VARIABLE_PARAMETERS = SolidEarthVariableParameters()
@@ -495,7 +497,11 @@ class Parameters(BaseModel):
     )
     load_model_variabilities: dict[str, Any] = {}
     parallel_computing: ParallelComputingParameters = DEFAULT_PARALLEL_COMPUTING_PARAMETERS
-    discretization: DiscretizationParameters = DEFAULT_DISCRETIZATION_PARAMETERS
+    discretization: dict[str, DiscretizationParameters] = {
+        "love_numbers": DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS,
+        "test_models": DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS,
+        "green_functions": DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS,
+    }
 
 
 DEFAULT_PARAMETERS = Parameters()

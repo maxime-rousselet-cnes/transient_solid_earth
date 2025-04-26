@@ -55,7 +55,9 @@ class ModelLayer(BaseModel):
     name: Optional[str]
     x_inf: float
     x_sup: float
-    splines: dict[str, tuple[numpy.ndarray | float, numpy.ndarray | float, int]] = {}
+    splines: dict[
+        str, tuple[numpy.ndarray | list[float] | float, numpy.ndarray | list[float] | float, int]
+    ] = {}
     y_i_system: Optional[Callable[[numpy.ndarray], numpy.ndarray]] = None
 
     @dataclasses.dataclass

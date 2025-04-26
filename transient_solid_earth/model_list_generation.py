@@ -7,16 +7,13 @@ from itertools import product
 from typing import Any, Optional
 
 from .parameters import (
-    DEFAULT_SOLID_EARTH_PARAMETERS,
-    ELASTIC_SOLID_EARTH_MODEL_OPTION_PARAMETERS,
+    SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS,
     LoadNumericalModelParameters,
     SolidEarthModelOptionParameters,
-    SolidEarthParameters,
     SolidEarthVariableParameters,
 )
 from .paths import SolidEarthModelPart, solid_earth_model_descriptions_path
-from .separators import LAYERS_SEPARATOR, VALUES_SEPARATOR
-from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
+from .separators import LAYERS_SEPARATOR, UNUSED_MODEL_PART_DEFAULT_NAME, VALUES_SEPARATOR
 from .solid_earth_model_description import SolidEarthModelDescription
 
 
@@ -117,17 +114,20 @@ def generate_parameter_value_possibilities(
 
 def create_all_model_variations(
     variable_parameters: SolidEarthVariableParameters,
-    solid_earth_model_option_list: list[SolidEarthModelOptionParameters],
-    solid_earth_parameters: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS,
-) -> list[tuple[SolidEarthFullNumericalModel, list[SolidEarthFullNumericalModel]]]:
+    solid_earth_model_option_list: Optional[list[SolidEarthModelOptionParameters]] = None,
+) -> list[tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]]:
     """
     Creates all possible variations of parameters for the wanted models and creates the
-    corresponding files accordingly. Returns all their IDs.
-    Chose deterministically a base numerical model for elastic reference for every elastic model
+    corresponding files accordingly. Returns a dictionary that describes their rheology parts,
+    for all of them.
+    Choses deterministically a base numerical model for elastic reference for every elastic model
     description. Thus, each tuple of the output list represents a couple of:
         - an elastic model.
         - all the corresponding anelastic models without redundancy.
     """
+
+    if not solid_earth_model_option_list:
+        solid_earth_model_option_list = SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS
 
     # Generates a structure to contain all possible model descriptions.
     model_description_filenames: dict[SolidEarthModelPart, list[str]] = {
@@ -180,45 +180,42 @@ def create_all_model_variations(
             model_description_filenames[SolidEarthModelPart.SHORT_TERM_ANELASTICITY],
         ):
             for options in solid_earth_model_option_list:
-                solid_earth_parameters.model.options = options
+                # TODO.
                 all_anelastic_model_variations[
-                    tuple(
+                    (
                         (
-                            [long_term_anelasticity_model_name]
-                            if options.use_long_term_anelasticity
-                            else []
-                        )
-                        + (
-                            [short_term_anelasticity_model_name]
-                            if options.use_short_term_anelasticity
-                            else []
-                        )
-                    )
-                ] = SolidEarthFullNumericalModel(
-                    solid_earth_parameters=solid_earth_parameters,
-                    rheology={
-                        SolidEarthModelPart.ELASTICITY: elastic_model_name,
-                        SolidEarthModelPart.LONG_TERM_ANELASTICITY: (
                             long_term_anelasticity_model_name
+                            if options.use_long_term_anelasticity
+                            else UNUSED_MODEL_PART_DEFAULT_NAME
                         ),
-                        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: (
+                        (
                             short_term_anelasticity_model_name
+                            if options.use_short_term_anelasticity
+                            else UNUSED_MODEL_PART_DEFAULT_NAME
                         ),
-                    },
-                )
-        solid_earth_parameters.model.options = ELASTIC_SOLID_EARTH_MODEL_OPTION_PARAMETERS
+                    )
+                ] = {
+                    SolidEarthModelPart.ELASTICITY: elastic_model_name,
+                    SolidEarthModelPart.LONG_TERM_ANELASTICITY: (
+                        long_term_anelasticity_model_name
+                        if options.use_long_term_anelasticity
+                        else UNUSED_MODEL_PART_DEFAULT_NAME
+                    ),
+                    SolidEarthModelPart.SHORT_TERM_ANELASTICITY: (
+                        short_term_anelasticity_model_name
+                        if options.use_short_term_anelasticity
+                        else UNUSED_MODEL_PART_DEFAULT_NAME
+                    ),
+                }
         all_model_variations += [
             (
-                SolidEarthFullNumericalModel(
-                    solid_earth_parameters=solid_earth_parameters,
-                    rheology={
-                        SolidEarthModelPart.ELASTICITY: elastic_model_name,
-                        SolidEarthModelPart.LONG_TERM_ANELASTICITY: None,
-                        SolidEarthModelPart.SHORT_TERM_ANELASTICITY: None,
-                    },
-                )
-            ),
-            list(all_anelastic_model_variations.values()),
+                {
+                    SolidEarthModelPart.ELASTICITY: elastic_model_name,
+                    SolidEarthModelPart.LONG_TERM_ANELASTICITY: UNUSED_MODEL_PART_DEFAULT_NAME,
+                    SolidEarthModelPart.SHORT_TERM_ANELASTICITY: UNUSED_MODEL_PART_DEFAULT_NAME,
+                },
+                list(all_anelastic_model_variations.values()),
+            )
         ]
 
     return all_model_variations

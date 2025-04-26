@@ -17,6 +17,7 @@ from .paths import (
     solid_earth_full_numerical_models_path,
     solid_earth_numerical_models_path,
 )
+from .separators import SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR
 from .solid_earth_model_description import SolidEarthModelDescription
 
 
@@ -48,7 +49,7 @@ class SolidEarthNumericalModel(Model):
         Initializes either with None attributes or already built ones.
         """
 
-        super().__init__()
+        super().__init__(model_id=model_id)
 
         # Initializes IDs.
         self.model_filename = (
@@ -56,9 +57,16 @@ class SolidEarthNumericalModel(Model):
         )
         self.model_part = solid_earth_model_part
         self.model_id = model_id if not (model_id is None) else self.model_filename
+        self.model_id = self.model_id.replace(
+            "/", SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR
+        )
 
         # Updates fields.
-        self.solid_earth_parameters = solid_earth_parameters
+        self.solid_earth_parameters = (
+            solid_earth_parameters
+            if isinstance(solid_earth_parameters, SolidEarthParameters)
+            else SolidEarthParameters(**solid_earth_parameters)
+        )
 
         # Initializes description layers as empty.
         self.model_layers = []
@@ -111,6 +119,7 @@ class SolidEarthNumericalModel(Model):
 
         # Formats layers.
         for i_layer, layer in enumerate(numerical_model_dict["model_layers"]):
+
             self.model_layers[i_layer] = ModelLayer(**layer)
             splines: dict[str, tuple] = layer["splines"]
 
