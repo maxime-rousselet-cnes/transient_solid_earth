@@ -293,7 +293,7 @@ def adaptative_step_parallel_computing_loop(
 
     # Initializes data structures.
     i_job_array = 0
-    global_semaphore = threading.Semaphore(value=10.0 * multiprocessing.cpu_count() - 1)
+    global_semaphore = threading.Semaphore(value=2.0 * multiprocessing.cpu_count())
     process_catalog = ProcessCatalog(
         fixed_parameter_list=fixed_parameter_list,
         rheologies=rheologies,
