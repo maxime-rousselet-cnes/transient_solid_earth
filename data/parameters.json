@@ -131,21 +131,16 @@
                 "PREM"
             ],
             "long_term_anelasticity": [
-                "VM7",
-                "VM5a"
+                "VM7"
             ],
             "short_term_anelasticity": [
-                "Benjamin_Q_Resovsky",
-                "Benjamin_Q_PAR3P"
+                "Benjamin_Q_Resovsky"
             ]
         },
         "rheological_parameters": {
             "long_term_anelasticity": {
                 "eta_m": {
                     "ASTHENOSPHERE": [
-                        [
-                            3e18
-                        ],
                         [
                             3e19
                         ]
@@ -156,20 +151,7 @@
                 "asymptotic_mu_ratio": {
                     "MANTLE": [
                         [
-                            0.1
-                        ],
-                        [
                             0.2
-                        ]
-                    ]
-                },
-                "alpha": {
-                    "MANTLE": [
-                        [
-                            0.223
-                        ],
-                        [
-                            0.297
                         ]
                     ]
                 }

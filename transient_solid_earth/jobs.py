@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 import threading
-from concurrent.futures import ThreadPoolExecutor  # <-- Note: THREAD pool, not PROCESS pool!
+from concurrent.futures import ThreadPoolExecutor  # Use threads, not processes
 
 from .paths import logs_subpaths
 
@@ -36,23 +36,6 @@ def submit_slurm_jobs(
     )
 
 
-def run_local_job(
-    function_name: str, job_array_name: str, job_array_max_file_size: int, job_id: int
-):
-    """
-    Runs locally a single job in background.
-    """
-    subprocess.Popen(
-        [
-            "python",
-            "worker_" + function_name + ".py",
-            job_array_name,
-            str(job_array_max_file_size),
-            str(job_id),
-        ]
-    )
-
-
 def run_local_job_with_semaphore(
     semaphore: threading.Semaphore,
     function_name: str,
@@ -64,7 +47,16 @@ def run_local_job_with_semaphore(
     Runs a single job while respecting a global semaphore limit.
     """
     with semaphore:
-        run_local_job(function_name, job_array_name, job_array_max_file_size, job_id)
+        process = subprocess.Popen(
+            [
+                "python",
+                "worker_" + function_name + ".py",
+                job_array_name,
+                str(job_array_max_file_size),
+                str(job_id),
+            ]
+        )
+        process.wait()  # Waits until the subprocess completes before releasing the slot
 
 
 def run_local_job_array_in_background(
@@ -78,7 +70,7 @@ def run_local_job_array_in_background(
     Runs locally a job array in background with a concurrency limit.
     """
 
-    with ThreadPoolExecutor(max_workers=min(n_jobs, 1000)) as executor:  # threads are cheap
+    with ThreadPoolExecutor(max_workers=min(n_jobs, 1000)) as executor:
         for i in range(n_jobs):
             executor.submit(
                 run_local_job_with_semaphore,
