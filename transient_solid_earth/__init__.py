@@ -13,7 +13,7 @@ from .paths import SolidEarthModelPart, intermediate_result_subpaths, logs_subpa
 from .separators import is_elastic
 from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
 from .solid_earth_time_dependent_numerical_model import SolidEarthTimeDependentNumericalModel
-from .test_models import TestModels, TestModelsRheology
+from .test_models import TestModel, TestModelRheology
 from .worker_parser import parse_worker_information
 
 objects = [
@@ -30,7 +30,7 @@ objects = [
     is_elastic,
     SolidEarthFullNumericalModel,
     SolidEarthTimeDependentNumericalModel,
-    TestModels,
-    TestModelsRheology,
+    TestModel,
+    TestModelRheology,
     parse_worker_information,
 ]

@@ -9,8 +9,7 @@ import numpy
 from matplotlib.pyplot import scatter, semilogx, show
 
 from transient_solid_earth import (
-    TestModels,
-    TestModelsRheology,
+    TestModelRheology,
     adaptative_step_parallel_computing_loop,
     intermediate_result_subpaths,
     load_base_model,
@@ -37,7 +36,6 @@ if __name__ == "__main__":
 
     adaptative_step_parallel_computing_loop(
         rheologies=rheologies,
-        model=TestModels,
         function_name="test_models",
         fixed_parameter_list=x_0_list,
         parameters=parameters,
@@ -48,7 +46,7 @@ if __name__ == "__main__":
             result = load_base_model(
                 name="real",
                 path=intermediate_result_subpaths["test_models"]
-                .joinpath(TestModelsRheology(**rheology).model_id())
+                .joinpath(TestModelRheology(**rheology).model_id())
                 .joinpath(str(x_0)),
             )
             for f in (

@@ -3,7 +3,7 @@ Defines a process/job for test models computing.
 """
 
 from transient_solid_earth import (
-    TestModels,
+    TestModel,
     WorkerInformation,
     intermediate_result_subpaths,
     load_base_model,
@@ -25,10 +25,10 @@ if __name__ == "__main__":
     if not path.exists():
 
         # Processes and saves.
-        model: TestModels = load_base_model(
+        model: TestModel = load_base_model(
             name=worker_information.model_id,
             path=logs_subpaths["test_models"].joinpath("models"),
-            base_model_type=TestModels,
+            base_model_type=TestModel,
         )
         save_base_model(
             obj=model.process(

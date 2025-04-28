@@ -6,20 +6,18 @@ import math
 import threading
 from copy import deepcopy
 from multiprocessing import cpu_count
-from typing import Type
 
 import numpy
 
 from .database import load_base_model, save_base_model
 from .file_creation_observer import FileCreationObserver
 from .jobs import run_job_array
-from .model import MODEL
+from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import (
     DEFAULT_PARAMETERS,
     DiscretizationParameters,
     ParallelComputingParameters,
     Parameters,
-    SolidEarthParameters,
 )
 from .paths import intermediate_result_subpaths, worker_information_subpaths
 from .worker_parser import WorkerInformation
@@ -74,18 +72,15 @@ class ProcessCatalog:
         fixed_parameter_list: list[float],
         rheologies: list[dict],
         function_name: str,
-        model: Type[MODEL],
-        solid_earth_parameters: SolidEarthParameters,
-        parallel_computing_parameters: ParallelComputingParameters,
-        discretization_parameters: DiscretizationParameters,
+        parameters: Parameters,
     ) -> None:
         """
         Generates the rheologies and saves the numerical models. Memorizes the IDs.
         """
 
         self.function_name = function_name
-        self.parallel_computing_parameters = parallel_computing_parameters
-        self.discretization_parameters = discretization_parameters
+        self.parallel_computing_parameters = parameters.parallel_computing
+        self.discretization_parameters = parameters.discretization[function_name]
 
         self.file_creation_observer = FileCreationObserver(
             base_path=intermediate_result_subpaths[self.function_name]
@@ -93,23 +88,23 @@ class ProcessCatalog:
 
         # Generates the loop's initial discretization.
         initial_variable_parameter_list = (
-            discretization_parameters.exponentiation_base
+            self.discretization_parameters.exponentiation_base
             ** numpy.linspace(
                 start=math.log(
-                    discretization_parameters.value_min,
-                    discretization_parameters.exponentiation_base,
+                    self.discretization_parameters.value_min,
+                    self.discretization_parameters.exponentiation_base,
                 ),
                 stop=math.log(
-                    discretization_parameters.value_max,
-                    discretization_parameters.exponentiation_base,
+                    self.discretization_parameters.value_max,
+                    self.discretization_parameters.exponentiation_base,
                 ),
-                num=discretization_parameters.n_0,
+                num=self.discretization_parameters.n_0,
             )
         )
 
         for rheology in rheologies:
-            model_id = model(
-                solid_earth_parameters=deepcopy(solid_earth_parameters), rheology=rheology
+            model_id = MODEL_TYPE_NAMES[function_name](
+                solid_earth_parameters=deepcopy(parameters.solid_earth), rheology=rheology
             ).model_id
             for fixed_parameter in fixed_parameter_list:
                 self.processed[(model_id, fixed_parameter)] = {
@@ -293,7 +288,6 @@ class ProcessCatalog:
 
 def adaptative_step_parallel_computing_loop(
     rheologies: list[dict],
-    model: Type[MODEL],
     function_name: str,
     fixed_parameter_list: list[float],
     parameters: Parameters = DEFAULT_PARAMETERS,
@@ -307,10 +301,7 @@ def adaptative_step_parallel_computing_loop(
         fixed_parameter_list=fixed_parameter_list,
         rheologies=rheologies,
         function_name=function_name,
-        model=model,
-        solid_earth_parameters=parameters.solid_earth,
-        parallel_computing_parameters=parameters.parallel_computing,
-        discretization_parameters=parameters.discretization[function_name],
+        parameters=parameters,
     )
 
     try:

@@ -21,7 +21,7 @@ def sigmoid(x):
         return numpy.nan_to_num(x=1 / (1 + numpy.exp(-x)), nan=0.0)
 
 
-class TestModelsRheology(BaseModel):
+class TestModelRheology(BaseModel):
     """
     Test.
     """
@@ -37,16 +37,16 @@ class TestModelsRheology(BaseModel):
         return "_".join([str(self.alpha), str(self.beta), str(self.gamma)])
 
 
-DEFAULT_TEST_MODELS_RHEOLOGY = TestModelsRheology()
+DEFAULT_TEST_MODELS_RHEOLOGY = TestModelRheology()
 
 
-class TestModels(BaseModel):
+class TestModel(BaseModel):
     """
     Test.
     """
 
     model_id: str = ""
-    rheology: TestModelsRheology = DEFAULT_TEST_MODELS_RHEOLOGY
+    rheology: TestModelRheology = DEFAULT_TEST_MODELS_RHEOLOGY
     real_crust: Optional[bool] = None
 
     def __init_subclass__(cls, **kwargs):
@@ -55,7 +55,7 @@ class TestModels(BaseModel):
     def __init__(
         self,
         solid_earth_parameters: Optional[SolidEarthParameters] = None,
-        rheology: Optional[TestModelsRheology | dict] = None,
+        rheology: Optional[TestModelRheology | dict] = None,
         model_id: Optional[str] = None,
         real_crust: Optional[bool] = None,
     ) -> None:
@@ -63,7 +63,7 @@ class TestModels(BaseModel):
         super().__init__()
 
         if solid_earth_parameters:
-            self.rheology = TestModelsRheology()
+            self.rheology = TestModelRheology()
             self.rheology.alpha = rheology["alpha"]
             self.rheology.beta = rheology["beta"]
             self.rheology.gamma = rheology["gamma"]
@@ -75,7 +75,7 @@ class TestModels(BaseModel):
 
         else:
             self.model_id = model_id
-            self.rheology = TestModelsRheology(**rheology)
+            self.rheology = TestModelRheology(**rheology)
             self.real_crust = real_crust
 
     def process(self, fixed_parameter: float, variable_parameter: float) -> numpy.ndarray:

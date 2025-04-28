@@ -5,7 +5,6 @@ Main call for Love numbers computing loop on rheologies.
 import shutil
 
 from transient_solid_earth import (
-    SolidEarthFullNumericalModel,
     SolidEarthModelPart,
     adaptative_step_parallel_computing_loop,
     create_all_model_variations,
@@ -29,7 +28,6 @@ if __name__ == "__main__":
     for elastic_model, anelastic_models in models:
         adaptative_step_parallel_computing_loop(
             rheologies=[elastic_model] + anelastic_models,
-            model=SolidEarthFullNumericalModel,
             function_name="love_numbers",
             fixed_parameter_list=generate_degrees_list(
                 degree_thresholds=parameters.solid_earth.degree_discretization.thresholds,
