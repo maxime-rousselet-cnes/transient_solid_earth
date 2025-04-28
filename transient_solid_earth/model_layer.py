@@ -3,6 +3,7 @@ The class describes the radial quantities of a solid earth layer.
 """
 
 import dataclasses
+import warnings
 from typing import Callable, Optional
 
 import numpy
@@ -222,8 +223,9 @@ class ModelLayer(BaseModel):
         """
         Integrates the Y_i system from the bottom to the top of the layer.
         """
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
 
-        with numpy.errstate(divide="ignore", invalid="ignore"):
             solver: OdeSolution = integrate.solve_ivp(
                 fun=self.y_i_system,
                 t_span=(self.x_inf, self.x_sup),
@@ -233,8 +235,7 @@ class ModelLayer(BaseModel):
                 rtol=numerical_parameters.integration_parameters.rtol,
                 atol=numerical_parameters.integration_parameters.atol,
             )
-
-        return solver.y[:, -1]
+            return solver.y[:, -1]
 
     def solid_to_fluid(
         self,

@@ -87,8 +87,9 @@ worker_information_subpaths = {
     for sub_path, log_subpath in logs_subpaths.items()
 }
 
+INTERMEDIATE_RESULT_STRING = "intermediate_results"
 intermediate_result_subpaths = {
-    sub_path: log_subpath.joinpath("intermediate_results")
+    sub_path: log_subpath.joinpath(INTERMEDIATE_RESULT_STRING)
     for sub_path, log_subpath in logs_subpaths.items()
 }
 

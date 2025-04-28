@@ -16,15 +16,11 @@
         },
         "degree_discretization": {
             "steps": [
-                1,
-                2,
-                5
+                1
             ],
             "thresholds": [
                 1,
-                20,
-                40,
-                100
+                20
             ]
         },
         "numerical_parameters": {
@@ -193,22 +189,22 @@
     },
     "discretization": {
         "love_numbers": {
-            "x_min": 1.0e-2,
-            "x_max": 1.0e6,
+            "value_min": 1.0e-2,
+            "value_max": 1.0e6,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0
         },
         "test_models": {
-            "x_min": 1.0e-2,
-            "x_max": 1.0e2,
+            "value_min": 1.0e-2,
+            "value_max": 1.0e2,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0
         },
         "green_functions": {
-            "x_min": 1.0e-10,
-            "x_max": 180.0,
+            "value_min": 1.0e-10,
+            "value_max": 180.0,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0

@@ -29,13 +29,12 @@ class TestModelsRheology(BaseModel):
     alpha: float = 0.0
     beta: float = 0.0
     gamma: float = 0.0
-    x_0: float = 0.0
 
     def model_id(self):
         """
         Test.
         """
-        return "_".join([str(self.alpha), str(self.beta), str(self.gamma), str(self.x_0)])
+        return "_".join([str(self.alpha), str(self.beta), str(self.gamma)])
 
 
 DEFAULT_TEST_MODELS_RHEOLOGY = TestModelsRheology()
@@ -68,7 +67,6 @@ class TestModels(BaseModel):
             self.rheology.alpha = rheology["alpha"]
             self.rheology.beta = rheology["beta"]
             self.rheology.gamma = rheology["gamma"]
-            self.rheology.x_0 = rheology["x_0"]
             self.model_id = self.rheology.model_id()
             self.real_crust = solid_earth_parameters.model.real_crust
             save_base_model(
@@ -80,11 +78,11 @@ class TestModels(BaseModel):
             self.rheology = TestModelsRheology(**rheology)
             self.real_crust = real_crust
 
-    def process(self, variable_parameter: float) -> numpy.ndarray:
+    def process(self, fixed_parameter: float, variable_parameter: float) -> numpy.ndarray:
         """
         Test.
         """
-        s = sigmoid(self.rheology.gamma * (variable_parameter - self.rheology.x_0))
+        s = sigmoid(self.rheology.gamma * (variable_parameter - fixed_parameter))
         return numpy.array(
             object=[
                 [

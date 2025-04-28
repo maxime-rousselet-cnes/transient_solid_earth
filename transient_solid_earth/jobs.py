@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor  # Use threads, not processes
+from multiprocessing import cpu_count
 
 from .paths import logs_subpaths
 
@@ -70,7 +71,7 @@ def run_local_job_array_in_background(
     Runs locally a job array in background with a concurrency limit.
     """
 
-    with ThreadPoolExecutor(max_workers=min(n_jobs, 1000)) as executor:
+    with ThreadPoolExecutor(max_workers=min(n_jobs, cpu_count())) as executor:
         for i in range(n_jobs):
             executor.submit(
                 run_local_job_with_semaphore,
@@ -118,7 +119,6 @@ def run_job_array(
             args=(n_jobs, function_name, job_array_name, job_array_max_file_size),
             daemon=True,
         )
-        thread.start()
     else:
         thread = threading.Thread(
             target=run_local_job_array_in_background,
@@ -131,4 +131,4 @@ def run_job_array(
             ),
             daemon=True,
         )
-        thread.start()
+    thread.start()

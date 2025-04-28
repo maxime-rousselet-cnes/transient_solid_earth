@@ -17,15 +17,14 @@ if __name__ == "__main__":
         intermediate_result_subpaths["test_models"]
         .joinpath(worker_information.model_id)
         .joinpath(str(worker_information.fixed_parameter))
-    )
-    file: str = (
+    ).joinpath(
         "inf"
         if is_elastic(model_id=worker_information.model_id)
         else str(worker_information.variable_parameter)
     )
 
     # Check whether the task has already been computed.
-    if not path.joinpath(file + ".json").exists():
+    if not path.exists():
 
         # Loads the full numerical model, processes and saves.
         SolidEarthTimeDependentNumericalModel(

@@ -3,23 +3,31 @@ Describes the loop using adaptatives step for all considered rheologies.
 """
 
 import math
-import multiprocessing
 import threading
 from copy import deepcopy
-from itertools import product
-from typing import Optional, Type
+from multiprocessing import cpu_count
+from typing import Type
 
 import numpy
 
 from .database import load_base_model, save_base_model
+from .file_creation_observer import FileCreationObserver
 from .jobs import run_job_array
 from .model import MODEL
-from .parameters import DEFAULT_PARAMETERS, Parameters, SolidEarthParameters
+from .parameters import (
+    DEFAULT_PARAMETERS,
+    DiscretizationParameters,
+    ParallelComputingParameters,
+    Parameters,
+    SolidEarthParameters,
+)
 from .paths import intermediate_result_subpaths, worker_information_subpaths
 from .worker_parser import WorkerInformation
 
 
-def add_sorted(result_dict: dict[str, list], x: float, values: list[float]) -> dict[str, list]:
+def add_sorted(
+    result_dict: dict[str, numpy.ndarray], x: float, values: numpy.ndarray
+) -> dict[str, numpy.ndarray]:
     """
     Insert a 'x' and 'values' in result_dict["x"] and result_dict["values"] respectively according
     to the order of result_dict["x"] elements.
@@ -30,12 +38,12 @@ def add_sorted(result_dict: dict[str, list], x: float, values: list[float]) -> d
         position += 1
     return {
         "x": numpy.array(
-            object=list(result_dict["x"][:position]) + [x] + list(result_dict["x"][position:])
+            object=result_dict["x"][:position].tolist() + [x] + result_dict["x"][position:].tolist()
         ),
         "values": numpy.array(
-            object=list(result_dict["values"][:position])
+            object=result_dict["values"][:position].tolist()
             + [values]
-            + list(result_dict["values"][position:])
+            + result_dict["values"][position:].tolist()
         ),
     }
 
@@ -46,177 +54,179 @@ class ProcessCatalog:
     stored. Manages the whole adaptative step parallel computing loop.
     """
 
-    # Actual process logs.
-    to_process: set[tuple[tuple[tuple, float], float]]
-    in_process: dict[tuple[tuple, float], list[float]]
-    just_processed: set[tuple[tuple, float]]
-    processed: dict[
-        tuple,  # Rheology as a tuple of parameters (model part names).
-        dict[float, dict[str, numpy.ndarray]],
-    ]
-
     # To memorize.
     function_name: str
-    rheologies: list[dict]
-    model_ids: dict[tuple[tuple, float], str]
+    parallel_computing_parameters: ParallelComputingParameters
+    discretization_parameters: DiscretizationParameters
+
+    # Actual process logs.
+    i_job_array: int = 0
+    file_creation_observer: FileCreationObserver
+    semaphore: threading.Semaphore = threading.Semaphore(value=cpu_count())
+
+    to_process: set[tuple[str, float, float]] = set()
+    in_process: dict[tuple[str, float], set[float]] = {}
+    just_processed: set[tuple[str, float, float]] = set()
+    processed: dict[tuple[str, float], dict[str, numpy.ndarray]] = {}  # "x" tab in log scale.
 
     def __init__(
         self,
         fixed_parameter_list: list[float],
         rheologies: list[dict],
-        initial_variable_parameter_list: numpy.ndarray[float] | list[float],
         function_name: str,
-    ) -> None:
-
-        self.to_process: set[tuple[tuple[tuple, float], float]] = set()
-        for rheology in rheologies:
-            for fixed_parameter in fixed_parameter_list:
-                for x in initial_variable_parameter_list:
-                    self.to_process.add(((tuple(rheology.values()), fixed_parameter), x))
-        self.in_process: dict[tuple[tuple, float], list[float]] = {}
-        self.just_processed: set[tuple[tuple, float]] = set()
-        self.processed: dict[
-            tuple,  # Rheology as a tuple of parameters (model part names).
-            dict[float, dict[str, numpy.ndarray]],
-        ] = {
-            tuple(rheology.values()): {
-                fixed_parameter: {"x": [], "values": []} for fixed_parameter in fixed_parameter_list
-            }
-            for rheology in rheologies
-        }
-        self.function_name = function_name
-        self.rheologies = rheologies
-        self.model_ids: dict[tuple[tuple, float], str] = {}
-
-    def generate_rheologies(
-        self,
         model: Type[MODEL],
-        fixed_parameter_list: list[float],
         solid_earth_parameters: SolidEarthParameters,
+        parallel_computing_parameters: ParallelComputingParameters,
+        discretization_parameters: DiscretizationParameters,
     ) -> None:
         """
         Generates the rheologies and saves the numerical models. Memorizes the IDs.
         """
 
-        for rheology, fixed_parameter in product(self.rheologies, fixed_parameter_list):
-            self.model_ids[(tuple(rheology.values()), fixed_parameter)] = model(
+        self.function_name = function_name
+        self.parallel_computing_parameters = parallel_computing_parameters
+        self.discretization_parameters = discretization_parameters
+
+        self.file_creation_observer = FileCreationObserver(
+            base_path=intermediate_result_subpaths[self.function_name]
+        )
+
+        # Generates the loop's initial discretization.
+        initial_variable_parameter_list = (
+            discretization_parameters.exponentiation_base
+            ** numpy.linspace(
+                start=math.log(
+                    discretization_parameters.value_min,
+                    discretization_parameters.exponentiation_base,
+                ),
+                stop=math.log(
+                    discretization_parameters.value_max,
+                    discretization_parameters.exponentiation_base,
+                ),
+                num=discretization_parameters.n_0,
+            )
+        )
+
+        for rheology in rheologies:
+            model_id = model(
                 solid_earth_parameters=deepcopy(solid_earth_parameters), rheology=rheology
             ).model_id
+            for fixed_parameter in fixed_parameter_list:
+                self.processed[(model_id, fixed_parameter)] = {
+                    "x": numpy.array(object=[]),
+                    "values": numpy.array(object=[]),
+                }
+                for x in initial_variable_parameter_list:
+                    self.to_process.add((model_id, fixed_parameter, x))
 
-    def schedule_jobs(
-        self,
-        i_job_array: int,
-        job_array_max_file_size: int,
-        exponentiation_base: float,
-        global_semaphore: threading.Semaphore,
-    ) -> int:
+    def schedule_jobs(self) -> None:
         """
         Schedules jobs for a job array. Empties 'to_process' and updates 'in_process'.
         """
 
-        i_worker_informations_file, i_job, n_jobs = 0, 0, len(self.to_process)
+        i_worker_informations_file, n_jobs = 0, len(self.to_process)
         worker_informations: list[WorkerInformation] = []
 
         # Create files for workers informations.
-        while self.to_process:
+        for i_job in range(1, n_jobs + 1):
 
-            (rheology, fixed_parameter), x = self.to_process.pop()
+            model_id, fixed_parameter, variable_parameter = self.to_process.pop()
 
             worker_informations += [
                 WorkerInformation(
-                    model_id=self.model_ids[(rheology, fixed_parameter)],
+                    model_id=model_id,
                     fixed_parameter=fixed_parameter,
-                    variable_parameter=exponentiation_base**x,
+                    variable_parameter=variable_parameter,
                 )
             ]
-            i_job += 1
 
             # Create a file for 'job_array_max_file_size' worker informations
-            if (i_job % job_array_max_file_size == 0) or (i_job == n_jobs):
+            if (i_job % self.parallel_computing_parameters.job_array_max_file_size == 0) or (
+                i_job == n_jobs
+            ):
 
                 save_base_model(
                     obj=worker_informations,
                     name=str(i_worker_informations_file),
-                    path=worker_information_subpaths[self.function_name].joinpath(str(i_job_array)),
+                    path=worker_information_subpaths[self.function_name].joinpath(
+                        str(self.i_job_array)
+                    ),
                 )
                 worker_informations = []
                 i_worker_informations_file += 1
 
             # Updates 'in_process'.
-            if (rheology, fixed_parameter) in self.in_process:
-                self.in_process[(rheology, fixed_parameter)] += [x]
+            if (model_id, fixed_parameter) in self.in_process:
+                self.in_process[(model_id, fixed_parameter)].add(variable_parameter)
             else:
-                self.in_process[(rheology, fixed_parameter)] = [x]
+                self.in_process[(model_id, fixed_parameter)] = set([variable_parameter])
 
         # Submits the job array.
         run_job_array(
             n_jobs=n_jobs,
             function_name=self.function_name,
-            job_array_name=str(i_job_array),
-            job_array_max_file_size=job_array_max_file_size,
-            semaphore=global_semaphore,
+            job_array_name=str(self.i_job_array),
+            job_array_max_file_size=self.parallel_computing_parameters.job_array_max_file_size,
+            semaphore=self.semaphore,
         )
 
         # Updates the job array ID.
-        i_job_array += 1
+        self.i_job_array += 1
 
-        return i_job_array
-
-    def get_results(self, exponentiation_base: float) -> None:
+    def get_results(self) -> None:
         """
         Loads the already computed values and updates the 'in_process' and 'processed' attributes.
         Updates 'just_processed' and 'processed'.
         """
 
-        for (rheology, fixed_parameter), x_values_in_process in deepcopy(self.in_process).items():
+        for path in self.file_creation_observer.get_created_file_paths():
 
-            model_results_path = intermediate_result_subpaths[self.function_name].joinpath(
-                self.model_ids[(rheology, fixed_parameter)]
-            )
+            variable_parameter = float(path.name)
+            fixed_parameter = float(path.parent.name)
+            model_id = path.parent.parent.name
 
-            i_t_tab = 0
+            if (model_id, fixed_parameter) in self.in_process:
 
-            for x in x_values_in_process:
-
-                name = str(exponentiation_base**x)
-                file_path = model_results_path.joinpath(name + ".json")
-
-                # Verifies is the process ended.
-                if file_path.exists():
+                if variable_parameter in self.in_process[(model_id, fixed_parameter)]:
 
                     # Updates 'in_process'.
-                    del self.in_process[(rheology, fixed_parameter)][i_t_tab]
-                    if len(self.in_process[(rheology, fixed_parameter)]) == 0:
-                        del self.in_process[(rheology, fixed_parameter)]
+                    # print(model_id, fixed_parameter)
+                    # print(self.in_process[(model_id, fixed_parameter)])
+                    self.in_process[(model_id, fixed_parameter)].remove(variable_parameter)
+                    if len(self.in_process[(model_id, fixed_parameter)]) == 0:
+                        del self.in_process[(model_id, fixed_parameter)]
 
                     # Updates 'just_processed'.
-                    self.just_processed.add((rheology, fixed_parameter))
+                    self.just_processed.add((model_id, fixed_parameter, variable_parameter))
 
                     # Updates 'processed'.
-                    self.processed[rheology][fixed_parameter] = add_sorted(
-                        result_dict=self.processed[rheology][fixed_parameter],
-                        x=x,
-                        values=load_base_model(name=name, path=model_results_path),
+                    self.processed[(model_id, fixed_parameter)] = add_sorted(
+                        result_dict=self.processed[model_id, fixed_parameter],
+                        x=math.log(
+                            variable_parameter, self.discretization_parameters.exponentiation_base
+                        ),
+                        values=numpy.array(object=load_base_model(name="real", path=path))
+                        + 1.0j * numpy.array(object=load_base_model(name="imag", path=path)),
                     )
 
-                else:
-
-                    i_t_tab += 1
-
-    def refine_discretization(self, maximum_tolerance: float, exponentiation_base: float) -> None:
+    def refine_discretization(self) -> None:
         """
         Refines the discretization on the variable parameter for a rheology and a fixed_parameter.
         Stops when the result is approximated everywhere by its linear interpolation.
         """
 
-        rheology, fixed_parameter = self.just_processed.pop()
+        to_postprocess: set[tuple[str, float]] = set()
+        while self.just_processed:
+            model_id, fixed_parameter, _ = self.just_processed.pop()
+            if (model_id, fixed_parameter) not in self.in_process:
+                to_postprocess.add((model_id, fixed_parameter))
 
         # Don't test for the stop criterion if processes are still running for the same model.
-        if (rheology, fixed_parameter) not in self.in_process:
+        for model_id, fixed_parameter in to_postprocess:
 
             # Verifies the stop criterion on the whole sequence.
-            f = self.processed[rheology][fixed_parameter]["values"]  # shape (T, *S)
-            x = self.processed[rheology][fixed_parameter]["x"]  # shape (T,)
+            f = self.processed[(model_id, fixed_parameter)]["values"]  # shape (T, *S)
+            x = self.processed[(model_id, fixed_parameter)]["x"]  # shape (T,)
 
             # Reshapes time arrays to broadcast with f.
             x_0 = x[:-2].reshape(-1, *([1] * (f.ndim - 1)))  # shape (T-2, 1, ..., 1)
@@ -227,7 +237,8 @@ class ProcessCatalog:
             # Linear interpolation estimate at midpoints.
             mask = numpy.any(
                 numpy.abs(((x_1 - x_0) * f[2:] + (x_2 - x_1) * f[:-2]) / x_span - f[1:-1])
-                > maximum_tolerance * (numpy.abs(f[2:] - f[:-2]) + numpy.abs(f[-1] - f[0])),
+                > self.discretization_parameters.maximum_tolerance
+                * (numpy.abs(f[2:] - f[:-2]) + numpy.abs(f[-1] - f[0])),
                 axis=tuple(range(1, f.ndim)),
             )
 
@@ -242,94 +253,84 @@ class ProcessCatalog:
 
                 # Updates 'to_process'.
                 for x in new_x_values:
-                    self.to_process.add(((rheology, fixed_parameter), x))
+                    self.to_process.add(
+                        (
+                            model_id,
+                            fixed_parameter,
+                            self.discretization_parameters.exponentiation_base**x,
+                        )
+                    )
 
             else:
 
                 # Saves results for the whole model.
-                save_base_model(
-                    obj={"rheology": rheology, "fixed_parameter": fixed_parameter}
-                    | {
-                        "x": exponentiation_base ** self.processed[rheology][fixed_parameter]["x"],
-                        "values": self.processed[rheology][fixed_parameter]["values"],
-                    },
-                    name=self.model_ids[(rheology, fixed_parameter)],
-                    path=intermediate_result_subpaths[self.function_name],
+                variable_parameter_tab = (
+                    self.discretization_parameters.exponentiation_base
+                    ** self.processed[model_id, fixed_parameter]["x"]
                 )
-
-                # Updates 'processed'.
-                del self.processed[rheology][fixed_parameter]
-                if len(self.processed[rheology]) == 0:
-                    del self.processed[rheology]
+                path = (
+                    intermediate_result_subpaths[self.function_name]
+                    .joinpath(model_id)
+                    .joinpath(str(fixed_parameter))
+                )
+                save_base_model(
+                    obj={
+                        "variable_parameter": variable_parameter_tab,
+                        "values": self.processed[model_id, fixed_parameter]["values"].real,
+                    },
+                    name="real",
+                    path=path,
+                )
+                save_base_model(
+                    obj={
+                        "variable_parameter": variable_parameter_tab,
+                        "values": self.processed[model_id, fixed_parameter]["values"].imag,
+                    },
+                    name="imag",
+                    path=path,
+                )
 
 
 def adaptative_step_parallel_computing_loop(
     rheologies: list[dict],
     model: Type[MODEL],
     function_name: str,
-    fixed_parameter_list: Optional[list[float]] = None,
+    fixed_parameter_list: list[float],
     parameters: Parameters = DEFAULT_PARAMETERS,
 ) -> None:
     """
     For every rheologies, uses an adaptative step.
     """
 
-    # Manages defaults.
-    if not fixed_parameter_list:
-        fixed_parameter_list = [0.0]
-
-    # Generates the loop's initial discretization.
-    initial_variable_parameter_list = numpy.linspace(
-        start=math.log(
-            parameters.discretization[function_name].x_min,
-            parameters.discretization[function_name].exponentiation_base,
-        ),
-        stop=math.log(
-            parameters.discretization[function_name].x_max,
-            parameters.discretization[function_name].exponentiation_base,
-        ),
-        num=parameters.discretization[function_name].n_0,
-    )
-
     # Initializes data structures.
-    i_job_array = 0
-    global_semaphore = threading.Semaphore(value=2.0 * multiprocessing.cpu_count())
     process_catalog = ProcessCatalog(
         fixed_parameter_list=fixed_parameter_list,
         rheologies=rheologies,
-        initial_variable_parameter_list=initial_variable_parameter_list,
         function_name=function_name,
-    )
-
-    # Generates rheology names and save numerical models.
-    process_catalog.generate_rheologies(
         model=model,
-        fixed_parameter_list=fixed_parameter_list,
         solid_earth_parameters=parameters.solid_earth,
+        parallel_computing_parameters=parameters.parallel_computing,
+        discretization_parameters=parameters.discretization[function_name],
     )
 
-    # Loops until the stop criterion is verified for every rheologies and fixed_parameter.
-    while process_catalog.processed:
+    try:
 
-        if process_catalog.to_process:
+        # Loops until the stop criterion is verified for every rheologies and fixed_parameter.
+        while process_catalog.to_process or process_catalog.in_process:
 
-            # Launches jobs if needed.
-            i_job_array = process_catalog.schedule_jobs(
-                i_job_array=i_job_array,
-                job_array_max_file_size=parameters.parallel_computing.job_array_max_file_size,
-                exponentiation_base=parameters.discretization[function_name].exponentiation_base,
-                global_semaphore=global_semaphore,
-            )
+            if process_catalog.to_process:
 
-        # Gets results if they are finished.
-        process_catalog.get_results(
-            exponentiation_base=parameters.discretization[function_name].exponentiation_base
-        )
+                # Launches jobs if needed.
+                process_catalog.schedule_jobs()
 
-        while process_catalog.just_processed:
+            if process_catalog.file_creation_observer.file_has_been_created():
 
-            # Tests the stop cirterion on newly available results.
-            process_catalog.refine_discretization(
-                maximum_tolerance=parameters.discretization[function_name].maximum_tolerance,
-                exponentiation_base=parameters.discretization[function_name].exponentiation_base,
-            )
+                # Gets results if they are finished.
+                process_catalog.get_results()
+
+                # Tests the stop cirterion on newly available results.
+                process_catalog.refine_discretization()
+
+    finally:
+
+        process_catalog.file_creation_observer.stop()
