@@ -2,7 +2,7 @@
 Main call for Love numbers computing loop on rheologies.
 """
 
-import shutil
+from time import time
 
 from transient_solid_earth import (
     SolidEarthModelPart,
@@ -10,20 +10,17 @@ from transient_solid_earth import (
     create_all_model_variations,
     generate_degrees_list,
     load_parameters,
-    logs_subpaths,
 )
 
 if __name__ == "__main__":
-
-    # Clears.
-    if logs_subpaths["love_numbers"].exists():
-        shutil.rmtree(logs_subpaths["love_numbers"])
 
     parameters = load_parameters()
 
     models: list[tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]] = (
         create_all_model_variations(variable_parameters=parameters.solid_earth_variabilities)
     )
+
+    t_0 = time()
 
     for elastic_model, anelastic_models in models:
         adaptative_step_parallel_computing_loop(
@@ -35,3 +32,5 @@ if __name__ == "__main__":
             ),
             parameters=parameters,
         )
+
+    print(time() - t_0)

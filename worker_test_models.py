@@ -2,6 +2,8 @@
 Defines a process/job for test models computing.
 """
 
+from os import utime
+
 from transient_solid_earth import (
     TestModel,
     WorkerInformation,
@@ -22,7 +24,11 @@ if __name__ == "__main__":
     )
 
     # Check whether the task has already been computed.
-    if not path.exists():
+    if path.exists():
+
+        utime(path=path.joinpath("imag.json"))
+
+    else:
 
         # Processes and saves.
         model: TestModel = load_base_model(

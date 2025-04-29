@@ -2,6 +2,8 @@
 Defines a process/job for Love numbers computing.
 """
 
+from os import utime
+
 from transient_solid_earth import (
     SolidEarthFullNumericalModel,
     SolidEarthTimeDependentNumericalModel,
@@ -24,7 +26,11 @@ if __name__ == "__main__":
     )
 
     # Check whether the task has already been computed.
-    if not path.exists():
+    if path.exists():
+
+        utime(path=path.joinpath("imag.json"))
+
+    else:
 
         # Loads the full numerical model, processes and saves.
         SolidEarthTimeDependentNumericalModel(

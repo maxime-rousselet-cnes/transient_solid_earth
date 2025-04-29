@@ -3,67 +3,32 @@ Describes the loop using adaptatives step for all considered rheologies.
 """
 
 import math
-import threading
 from copy import deepcopy
-from multiprocessing import cpu_count
+from typing import Optional
 
 import numpy
 
 from .database import load_base_model, save_base_model
 from .file_creation_observer import FileCreationObserver
-from .jobs import run_job_array
+from .functions import add_sorted, round_value
 from .model_type_names import MODEL_TYPE_NAMES
-from .parameters import (
-    DEFAULT_PARAMETERS,
-    DiscretizationParameters,
-    ParallelComputingParameters,
-    Parameters,
-)
-from .paths import intermediate_result_subpaths, worker_information_subpaths
-from .worker_parser import WorkerInformation
+from .parameters import DEFAULT_PARAMETERS, DiscretizationParameters, Parameters
+from .paths import intermediate_result_subpaths
+from .process_catalog import ProcessCatalog
 
 
-def add_sorted(
-    result_dict: dict[str, numpy.ndarray], x: float, values: numpy.ndarray
-) -> dict[str, numpy.ndarray]:
-    """
-    Insert a 'x' and 'values' in result_dict["x"] and result_dict["values"] respectively according
-    to the order of result_dict["x"] elements.
-    """
-
-    position = 0
-    while (position < len(result_dict["x"])) and (result_dict["x"][position] < x):
-        position += 1
-    return {
-        "x": numpy.array(
-            object=result_dict["x"][:position].tolist() + [x] + result_dict["x"][position:].tolist()
-        ),
-        "values": numpy.array(
-            object=result_dict["values"][:position].tolist()
-            + [values]
-            + result_dict["values"][position:].tolist()
-        ),
-    }
-
-
-class ProcessCatalog:
+class AdaptativeStepProcessCatalog(ProcessCatalog):
     """
     Recap of all processes to be launched, in process, just processed and whose results have been
     stored. Manages the whole adaptative step parallel computing loop.
     """
 
     # To memorize.
-    function_name: str
-    parallel_computing_parameters: ParallelComputingParameters
     discretization_parameters: DiscretizationParameters
 
     # Actual process logs.
-    i_job_array: int = 0
     file_creation_observer: FileCreationObserver
-    semaphore: threading.Semaphore = threading.Semaphore(value=cpu_count())
 
-    to_process: set[tuple[str, float, float]] = set()
-    in_process: dict[tuple[str, float], set[float]] = {}
     just_processed: set[tuple[str, float, float]] = set()
     processed: dict[tuple[str, float], dict[str, numpy.ndarray]] = {}  # "x" tab in log scale.
 
@@ -78,8 +43,10 @@ class ProcessCatalog:
         Generates the rheologies and saves the numerical models. Memorizes the IDs.
         """
 
-        self.function_name = function_name
-        self.parallel_computing_parameters = parameters.parallel_computing
+        super().__init__(
+            function_name=function_name, parallel_computing_parameters=parameters.parallel_computing
+        )
+
         self.discretization_parameters = parameters.discretization[function_name]
 
         self.file_creation_observer = FileCreationObserver(
@@ -87,8 +54,8 @@ class ProcessCatalog:
         )
 
         # Generates the loop's initial discretization.
-        initial_variable_parameter_list = (
-            self.discretization_parameters.exponentiation_base
+        initial_variable_parameter_list = round_value(
+            t=self.discretization_parameters.exponentiation_base
             ** numpy.linspace(
                 start=math.log(
                     self.discretization_parameters.value_min,
@@ -99,7 +66,8 @@ class ProcessCatalog:
                     self.discretization_parameters.exponentiation_base,
                 ),
                 num=self.discretization_parameters.n_0,
-            )
+            ),
+            rounding=self.discretization_parameters.rounding,
         )
 
         for rheology in rheologies:
@@ -111,62 +79,8 @@ class ProcessCatalog:
                     "x": numpy.array(object=[]),
                     "values": numpy.array(object=[]),
                 }
-                for x in initial_variable_parameter_list:
-                    self.to_process.add((model_id, fixed_parameter, x))
-
-    def schedule_jobs(self) -> None:
-        """
-        Schedules jobs for a job array. Empties 'to_process' and updates 'in_process'.
-        """
-
-        i_worker_informations_file, n_jobs = 0, len(self.to_process)
-        worker_informations: list[WorkerInformation] = []
-
-        # Create files for workers informations.
-        for i_job in range(1, n_jobs + 1):
-
-            model_id, fixed_parameter, variable_parameter = self.to_process.pop()
-
-            worker_informations += [
-                WorkerInformation(
-                    model_id=model_id,
-                    fixed_parameter=fixed_parameter,
-                    variable_parameter=variable_parameter,
-                )
-            ]
-
-            # Create a file for 'job_array_max_file_size' worker informations
-            if (i_job % self.parallel_computing_parameters.job_array_max_file_size == 0) or (
-                i_job == n_jobs
-            ):
-
-                save_base_model(
-                    obj=worker_informations,
-                    name=str(i_worker_informations_file),
-                    path=worker_information_subpaths[self.function_name].joinpath(
-                        str(self.i_job_array)
-                    ),
-                )
-                worker_informations = []
-                i_worker_informations_file += 1
-
-            # Updates 'in_process'.
-            if (model_id, fixed_parameter) in self.in_process:
-                self.in_process[(model_id, fixed_parameter)].add(variable_parameter)
-            else:
-                self.in_process[(model_id, fixed_parameter)] = set([variable_parameter])
-
-        # Submits the job array.
-        run_job_array(
-            n_jobs=n_jobs,
-            function_name=self.function_name,
-            job_array_name=str(self.i_job_array),
-            job_array_max_file_size=self.parallel_computing_parameters.job_array_max_file_size,
-            semaphore=self.semaphore,
-        )
-
-        # Updates the job array ID.
-        self.i_job_array += 1
+                for variable_parameter in initial_variable_parameter_list:
+                    self.to_process.add((model_id, fixed_parameter, variable_parameter))
 
     def get_results(self) -> None:
         """
@@ -238,30 +152,37 @@ class ProcessCatalog:
             )
 
             # Inserts midpoints of x where error is large.
-            new_x_values = numpy.unique(
-                numpy.concatenate(
-                    [(x[:-2][mask] + x[1:-1][mask]) / 2.0, (x[1:-1][mask] + x[2:][mask]) / 2.0]
+            new_variable_values = (
+                self.discretization_parameters.exponentiation_base
+                ** numpy.setdiff1d(
+                    numpy.unique(
+                        round_value(
+                            t=numpy.concatenate(
+                                [
+                                    (x[:-2][mask] + x[1:-1][mask]) / 2.0,
+                                    (x[1:-1][mask] + x[2:][mask]) / 2.0,
+                                ]
+                            ),
+                            rounding=self.discretization_parameters.rounding,
+                        )
+                    ),
+                    x,
                 )
             )
 
-            if len(new_x_values) != 0:
+            if len(new_variable_values) != 0:
 
                 # Updates 'to_process'.
-                for x in new_x_values:
-                    self.to_process.add(
-                        (
-                            model_id,
-                            fixed_parameter,
-                            self.discretization_parameters.exponentiation_base**x,
-                        )
-                    )
+                for variable_value in new_variable_values:
+                    self.to_process.add((model_id, fixed_parameter, variable_value))
 
             else:
 
                 # Saves results for the whole model.
-                variable_parameter_tab = (
-                    self.discretization_parameters.exponentiation_base
-                    ** self.processed[model_id, fixed_parameter]["x"]
+                variable_parameter_tab = round_value(
+                    t=self.discretization_parameters.exponentiation_base
+                    ** self.processed[model_id, fixed_parameter]["x"],
+                    rounding=self.discretization_parameters.rounding,
                 )
                 path = (
                     intermediate_result_subpaths[self.function_name]
@@ -289,15 +210,19 @@ class ProcessCatalog:
 def adaptative_step_parallel_computing_loop(
     rheologies: list[dict],
     function_name: str,
-    fixed_parameter_list: list[float],
+    fixed_parameter_list: Optional[list[float]] = None,
     parameters: Parameters = DEFAULT_PARAMETERS,
 ) -> None:
     """
     For every rheologies, uses an adaptative step.
     """
 
+    # Manages default.
+    if not fixed_parameter_list:
+        fixed_parameter_list = [0.0]
+
     # Initializes data structures.
-    process_catalog = ProcessCatalog(
+    process_catalog = AdaptativeStepProcessCatalog(
         fixed_parameter_list=fixed_parameter_list,
         rheologies=rheologies,
         function_name=function_name,

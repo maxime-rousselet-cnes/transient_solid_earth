@@ -122,14 +122,25 @@ class DiscretizationParameters(BaseModel):
     n_0: int = 3  # Minimal number of evaluations. Should be >=3.
     maximum_tolerance: float = 5.0e-3  # Curvature criterion.
     exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
+    rounding: int = 10
 
 
 DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
 DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
-    value_min=1.0e-2, value_max=1.0e2, n_0=3, maximum_tolerance=5e-3, exponentiation_base=10.0
+    value_min=1.0e-2,
+    value_max=1.0e2,
+    n_0=3,
+    maximum_tolerance=5e-3,
+    exponentiation_base=10.0,
+    rounding=10,
 )
 DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
-    value_min=1.0e-10, value_max=180.0, n_0=3, maximum_tolerance=5e-3, exponentiation_base=10.0
+    value_min=1.0e-10,
+    value_max=180.0,
+    n_0=3,
+    maximum_tolerance=5e-3,
+    exponentiation_base=10.0,
+    round=10,
 )
 
 
@@ -223,6 +234,7 @@ class ParallelComputingParameters(BaseModel):
     """
 
     job_array_max_file_size: int = 1000
+    cpu_buffer_factor: int = 10
 
 
 DEFAULT_PARALLEL_COMPUTING_PARAMETERS = ParallelComputingParameters()

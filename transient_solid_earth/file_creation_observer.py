@@ -1,5 +1,5 @@
 """
-Real time file creation observer. Usefull for adaptative step parallel computin loop.
+Real-time file creation observer. Useful for adaptive step parallel computing loops.
 """
 
 import threading
@@ -14,13 +14,14 @@ from .paths import INTERMEDIATE_RESULT_STRING
 
 class FileCreationObserver:
     """
-    Monitors a directory for new file creations.
+    Monitors a directory for new file creations or touches.
     """
 
     observer: BaseObserver
     new_file_detected: threading.Event
     base_path: Path
     created_file_paths: list[Path]
+    handler: FileSystemEventHandler
 
     def __init__(self, base_path: Path):
         """
@@ -29,45 +30,51 @@ class FileCreationObserver:
 
         base_path.mkdir(parents=True, exist_ok=True)
 
-        self.observer: BaseObserver = Observer()
-        self.new_file_detected: threading.Event = threading.Event()
-        self.base_path: Path = base_path
+        self.observer = Observer()
+        self.new_file_detected = threading.Event()
+        self.base_path = base_path
         self.created_file_paths = []
 
-        event_handler = self.Handler(
+        self.handler = self.Handler(
             event_flag=self.new_file_detected, created_file_paths=self.created_file_paths
         )
-        self.observer.schedule(event_handler, self.base_path, recursive=True)
+
+        self.observer.schedule(self.handler, self.base_path, recursive=True)
         self.observer.start()
 
     class Handler(FileSystemEventHandler):
         """
-        Handler for file system events. Sets an event flag when a new file is created.
+        Handler for file system events. Sets an event flag when a new file is created or touched.
         """
 
-        event_flag: threading.Event
-        created_file_paths: list[Path]
-
         def __init__(self, event_flag: threading.Event, created_file_paths: list[Path]):
-            """
-            Initializes the handler with an event flag.
-            """
-
             self.event_flag = event_flag
             self.created_file_paths = created_file_paths
+            self._seen = set()
+
+        def _handle_event(self, path: str):
+            p = Path(path)
+            if p not in self._seen and not p.is_dir():
+                self._seen.add(p)
+                self.event_flag.set()
+                self.created_file_paths.append(p)
 
         def on_created(self, event):
+            self._handle_event(event.src_path)
+
+        def on_modified(self, event):
+            self._handle_event(event.src_path)
+
+        def reset_seen(self):
             """
-            Sets the event flag if a file (not directory) is created.
+            Resets.
             """
 
-            if not event.is_directory:
-                self.event_flag.set()
-                self.created_file_paths.append(Path(event.src_path))
+            self._seen.clear()
 
     def file_has_been_created(self) -> bool:
         """
-        Checks if a new file has been created since the last check.
+        Checks if a new file has been created or touched since the last check.
         """
 
         if self.new_file_detected.is_set():
@@ -77,15 +84,17 @@ class FileCreationObserver:
 
     def get_created_file_paths(self) -> list[Path]:
         """
-        Returns the list of paths of all files that have been created so far.
+        Returns the list of paths of all files that have been created or touched so far.
         """
 
         created_file_paths = self.created_file_paths.copy()
         self.created_file_paths.clear()
+        self.handler.reset_seen()
+
         return [
             file_path.parent
             for file_path in created_file_paths
-            if "imag" in file_path.name  # Because "real" file is always created first.
+            if "imag" in file_path.name
             and file_path.parent.parent.parent.parent.name == INTERMEDIATE_RESULT_STRING
         ]
 

@@ -12,6 +12,44 @@ from scipy import interpolate
 from .constants import MASK_DECIMALS
 
 
+def round_value(t: float, rounding: int) -> float:
+    """
+    Truncature in scientific notation.
+    """
+
+    x = numpy.asarray(t)
+    sign = numpy.sign(x)
+    x_abs = numpy.abs(x)
+    nonzero = x_abs != 0
+    exp = numpy.zeros_like(x_abs, dtype=int)
+    exp[nonzero] = numpy.floor(numpy.log10(x_abs[nonzero])).astype(int)
+    factor = 10.0 ** (exp - rounding + 1)
+    truncated = numpy.floor(x_abs / factor) * factor
+    return sign * truncated
+
+
+def add_sorted(
+    result_dict: dict[str, numpy.ndarray], x: float, values: numpy.ndarray
+) -> dict[str, numpy.ndarray]:
+    """
+    Insert a 'x' and 'values' in result_dict["x"] and result_dict["values"] respectively according
+    to the order of result_dict["x"] elements.
+    """
+
+    position = 0
+    while (position < len(result_dict["x"])) and (result_dict["x"][position] < x):
+        position += 1
+    return {
+        "x": numpy.array(
+            object=result_dict["x"][:position].tolist() + [x] + result_dict["x"][position:].tolist()
+        ),
+        "values": numpy.array(
+            object=result_dict["values"][:position].tolist()
+            + [values]
+            + result_dict["values"][position:].tolist()
+        ),
+    }
+
 def interpolate_array(
     x_values: numpy.ndarray, y_values: numpy.ndarray, new_x_values: numpy.ndarray
 ) -> numpy.ndarray:

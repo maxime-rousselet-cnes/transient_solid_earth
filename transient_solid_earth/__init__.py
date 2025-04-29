@@ -2,10 +2,7 @@
 Minimal package structure for transient_solid_earth.
 """
 
-from .adaptative_step_parallel_computing import (
-    WorkerInformation,
-    adaptative_step_parallel_computing_loop,
-)
+from .adaptative_step_parallel_computing import adaptative_step_parallel_computing_loop
 from .database import generate_degrees_list, load_base_model, save_base_model
 from .model_list_generation import create_all_model_variations
 from .parameters import load_parameters
@@ -14,7 +11,7 @@ from .separators import is_elastic
 from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
 from .solid_earth_time_dependent_numerical_model import SolidEarthTimeDependentNumericalModel
 from .test_models import TestModel, TestModelRheology
-from .worker_parser import parse_worker_information
+from .worker_parser import WorkerInformation, parse_worker_information
 
 objects = [
     WorkerInformation,

@@ -4,6 +4,7 @@ Main call for Love numbers computing loop on rheologies.
 
 import shutil
 from itertools import product
+from time import time
 
 import numpy
 from matplotlib.pyplot import scatter, semilogx, show
@@ -34,12 +35,16 @@ if __name__ == "__main__":
         for alpha, beta, gamma in product(alpha_list, beta_list, gamma_list)
     ]
 
+    t_0 = time()
+
     adaptative_step_parallel_computing_loop(
         rheologies=rheologies,
         function_name="test_models",
         fixed_parameter_list=x_0_list,
         parameters=parameters,
     )
+
+    print(time() - t_0)
 
     for rheology in rheologies[:1]:
         for x_0 in x_0_list[:1]:

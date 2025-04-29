@@ -20,7 +20,7 @@
             ],
             "thresholds": [
                 1,
-                20
+                10
             ]
         },
         "numerical_parameters": {
@@ -142,15 +142,6 @@
                         ]
                     ]
                 }
-            },
-            "short_term_anelasticity": {
-                "asymptotic_mu_ratio": {
-                    "MANTLE": [
-                        [
-                            0.2
-                        ]
-                    ]
-                }
             }
         }
     },
@@ -185,7 +176,8 @@
         }
     },
     "parallel_computing": {
-        "job_array_max_file_size": 1000
+        "job_array_max_file_size": 1000,
+        "cpu_buffer_factor": 10
     },
     "discretization": {
         "love_numbers": {
@@ -193,21 +185,24 @@
             "value_max": 1.0e6,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
-            "exponentiation_base": 10.0
+            "exponentiation_base": 10.0,
+            "round": 10
         },
         "test_models": {
             "value_min": 1.0e-2,
             "value_max": 1.0e2,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
-            "exponentiation_base": 10.0
+            "exponentiation_base": 10.0,
+            "round": 10
         },
         "green_functions": {
             "value_min": 1.0e-10,
             "value_max": 180.0,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
-            "exponentiation_base": 10.0
+            "exponentiation_base": 10.0,
+            "round": 10
         }
     },
     "test": true
