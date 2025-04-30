@@ -165,7 +165,7 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                                         if math.log(
                                             x_right - x_left
                                             > self.discretization_parameters.min_step,
-                                            self.discretization_parameters.expontntiation_base,
+                                            self.discretization_parameters.exponentiation_base,
                                         )
                                     ]
                                     for x_left_tab, x_right_tab in zip(
