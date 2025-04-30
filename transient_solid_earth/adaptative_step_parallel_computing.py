@@ -162,9 +162,9 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                                     [
                                         (x_left[mask] + x_right[mask]) / 2.0
                                         for x_left, x_right in zip(x_left_tab, x_right_tab)
-                                        if math.log(
-                                            x_right - x_left
-                                            > self.discretization_parameters.min_step,
+                                        if x_right - x_left
+                                        > math.log(
+                                            self.discretization_parameters.min_step,
                                             self.discretization_parameters.exponentiation_base,
                                         )
                                     ]
