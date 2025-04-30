@@ -160,8 +160,10 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                             t=numpy.concatenate(
                                 [
                                     [
-                                        (x_left[mask] + x_right[mask]) / 2.0
-                                        for x_left, x_right in zip(x_left_tab, x_right_tab)
+                                        (x_left + x_right) / 2.0
+                                        for x_left, x_right in zip(
+                                            x_left_tab[mask], x_right_tab[mask]
+                                        )
                                         if x_right - x_left
                                         > math.log(
                                             self.discretization_parameters.min_step,
