@@ -14,36 +14,14 @@ from .constants import (
     LAYER_DECIMALS,
     SECONDS_PER_YEAR,
 )
+from .generic_rheology_model import solid_earth_full_numerical_model_id_from_part_names
 from .model_layer import ModelLayer
 from .parameters import DEFAULT_SOLID_EARTH_PARAMETERS, SolidEarthParameters
 from .paths import SolidEarthModelPart
 from .rheological_formulas import find_tau_m, mu_k_computing
-from .separators import (
-    LAYER_NAMES_SEPARATOR,
-    SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
-    SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR,
-    UNUSED_MODEL_PART_DEFAULT_NAME,
-)
+from .separators import LAYER_NAMES_SEPARATOR, UNUSED_MODEL_PART_DEFAULT_NAME
 from .solid_earth_elastic_numerical_model import SolidEarthElasticNumericalModel
 from .solid_earth_numerical_model import SolidEarthNumericalModel
-
-
-def solid_earth_full_numerical_model_id_from_part_names(
-    elasticity_name: str, long_term_anelasticity_name: str, short_term_anelasticity_name: str
-) -> str:
-    """
-    Builds an id for a solid Earth full numerical model given the names of its components.
-    """
-    return SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR.join(
-        (
-            part_name.replace("/", SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR)
-            for part_name in (
-                elasticity_name,
-                long_term_anelasticity_name,
-                short_term_anelasticity_name,
-            )
-        )
-    )
 
 
 def initialize_model_parts(

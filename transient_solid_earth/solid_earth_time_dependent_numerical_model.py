@@ -45,9 +45,6 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         period: float,  # (yr).
         n: int,
     ) -> None:
-        """
-        Creates an Integration instance.
-        """
 
         super().__init__(
             solid_earth_parameters=solid_earth_full_numerical_model.solid_earth_parameters,

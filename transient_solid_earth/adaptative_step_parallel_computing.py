@@ -159,8 +159,18 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                         round_value(
                             t=numpy.concatenate(
                                 [
-                                    (x[:-2][mask] + x[1:-1][mask]) / 2.0,
-                                    (x[1:-1][mask] + x[2:][mask]) / 2.0,
+                                    [
+                                        (x_left[mask] + x_right[mask]) / 2.0
+                                        for x_left, x_right in zip(x_left_tab, x_right_tab)
+                                        if math.log(
+                                            x_right - x_left
+                                            > self.discretization_parameters.min_step,
+                                            self.discretization_parameters.expontntiation_base,
+                                        )
+                                    ]
+                                    for x_left_tab, x_right_tab in zip(
+                                        [x[:-2], x[1:-1]], [x[1:-1], x[2:]]
+                                    )
                                 ]
                             ),
                             rounding=self.discretization_parameters.rounding,

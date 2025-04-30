@@ -23,7 +23,7 @@ if __name__ == "__main__":
         .joinpath(str(worker_information.variable_parameter))
     )
 
-    # Check whether the task has already been computed.
+    # Checks whether the task has already been computed.
     if path.exists():
 
         utime(path=path.joinpath("imag.json"))

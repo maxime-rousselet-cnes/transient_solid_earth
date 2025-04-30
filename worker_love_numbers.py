@@ -16,7 +16,7 @@ from transient_solid_earth import (
 if __name__ == "__main__":
     worker_information: WorkerInformation = parse_worker_information(function_name="love_numbers")
     path = (
-        intermediate_result_subpaths["test_models"]
+        intermediate_result_subpaths["love_numbers"]
         .joinpath(worker_information.model_id)
         .joinpath(str(worker_information.fixed_parameter))
     ).joinpath(
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         else str(worker_information.variable_parameter)
     )
 
-    # Check whether the task has already been computed.
+    # Checks whether the task has already been computed.
     if path.exists():
 
         utime(path=path.joinpath("imag.json"))

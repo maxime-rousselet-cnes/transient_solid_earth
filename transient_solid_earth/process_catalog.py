@@ -23,6 +23,7 @@ class ProcessCatalog:
     semaphore: threading.Semaphore
     i_job_array: int = 0
     function_name: str
+    threads: list[threading.Thread] = []
 
     def __init__(
         self,
@@ -95,13 +96,23 @@ class ProcessCatalog:
             )
 
         # Submits the job array.
-        run_job_array(
-            n_jobs=n_jobs,
-            function_name=self.function_name,
-            job_array_name=str(self.i_job_array),
-            job_array_max_file_size=self.parallel_computing_parameters.job_array_max_file_size,
-            semaphore=self.semaphore,
+        self.threads.append(
+            run_job_array(
+                n_jobs=n_jobs,
+                function_name=self.function_name,
+                job_array_name=str(self.i_job_array),
+                job_array_max_file_size=self.parallel_computing_parameters.job_array_max_file_size,
+                semaphore=self.semaphore,
+            )
         )
 
         # Updates the job array ID.
         self.i_job_array += 1
+
+    def wait(self) -> None:
+        """
+        Releases all the slots.
+        """
+
+        for thread in self.threads:
+            thread.join()

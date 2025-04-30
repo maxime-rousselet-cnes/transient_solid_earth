@@ -6,14 +6,9 @@ import shutil
 from itertools import product
 from time import time
 
-import numpy
-from matplotlib.pyplot import scatter, semilogx, show
-
 from transient_solid_earth import (
-    TestModelRheology,
     adaptative_step_parallel_computing_loop,
-    intermediate_result_subpaths,
-    load_base_model,
+    interpolate_on_grid_parallel_computing_loop,
     load_parameters,
     logs_subpaths,
 )
@@ -24,7 +19,7 @@ if __name__ == "__main__":
     if logs_subpaths["test_models"].exists():
         shutil.rmtree(logs_subpaths["test_models"])
 
-    x_0_list = [0.25, 0.5, 2.0]
+    x_0_list = [1.0, 2.0]
     alpha_list = [-1.0, 1.0]
     beta_list = [-1.0, 1.0]
     gamma_list = [-1.0, 1.0]
@@ -44,21 +39,11 @@ if __name__ == "__main__":
         parameters=parameters,
     )
 
-    print(time() - t_0)
+    t_1 = time()
+    print(t_1 - t_0)
 
-    for rheology in rheologies[:1]:
-        for x_0 in x_0_list[:1]:
-            result = load_base_model(
-                name="real",
-                path=intermediate_result_subpaths["test_models"]
-                .joinpath(TestModelRheology(**rheology).model_id())
-                .joinpath(str(x_0)),
-            )
-            for f in (
-                numpy.array(object=result["values"])
-                .reshape(len(result["variable_parameter"]), -1)
-                .T
-            ):
-                semilogx(result["variable_parameter"], f)
-                scatter(result["variable_parameter"], f)
-            show()
+    interpolate_on_grid_parallel_computing_loop(
+        function_name="test_models", rheologies=rheologies, parameters=parameters
+    )
+
+    print(time() - t_1)

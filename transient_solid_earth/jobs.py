@@ -56,7 +56,7 @@ def run_local_job_with_semaphore(
                 str(job_id),
             ]
         )
-        process.wait()  # Waits until the subprocess completes before releasing the slot
+        process.wait()  # Waits until the subprocess completes before releasing the slot.
 
 
 def run_local_job_array_in_background(
@@ -94,7 +94,7 @@ def is_slurm_available() -> bool:
 
     try:
         result = subprocess.run(
-            ["scontrol", "ping"], capture_output=True, text=True, timeout=2, check=True
+            ["scontrol", "ping"], capture_output=True, text=True, timeout=0.1, check=True
         )
         return "Slurmctld" in result.stdout and "responding" in result.stdout
     except (subprocess.SubprocessError, FileNotFoundError, subprocess.CalledProcessError):
@@ -107,7 +107,7 @@ def run_job_array(
     job_array_name: str,
     job_array_max_file_size: int,
     semaphore: threading.Semaphore,
-) -> None:
+) -> threading.Thread:
     """
     Runs parallel computing without blocking.
     """
@@ -131,3 +131,4 @@ def run_job_array(
             daemon=True,
         )
     thread.start()
+    return thread

@@ -16,15 +16,17 @@
         },
         "degree_discretization": {
             "steps": [
-                1
+                1,
+                10
             ],
             "thresholds": [
                 1,
-                10
+                3,
+                40
             ]
         },
         "numerical_parameters": {
-            "spline_number": 10,
+            "spline_number": 100,
             "spline_degree": 1,
             "integration_parameters": {
                 "n_max_for_sub_cmb_integration": 35,
@@ -182,11 +184,12 @@
     "discretization": {
         "love_numbers": {
             "value_min": 1.0e-2,
-            "value_max": 1.0e6,
+            "value_max": 1.0e5,
             "n_0": 3,
-            "maximum_tolerance": 5.0e-3,
+            "maximum_tolerance": 1.0e-2,
             "exponentiation_base": 10.0,
-            "round": 10
+            "round": 10,
+            "min_step": 1.2
         },
         "test_models": {
             "value_min": 1.0e-2,
@@ -194,7 +197,8 @@
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0,
-            "round": 10
+            "round": 10,
+            "min_step": 1.2
         },
         "green_functions": {
             "value_min": 1.0e-10,
@@ -202,7 +206,8 @@
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0,
-            "round": 10
+            "round": 10,
+            "min_step": 1.2
         }
     },
     "test": true

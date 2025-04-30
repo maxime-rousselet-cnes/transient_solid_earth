@@ -77,9 +77,12 @@ anelastic_load_signals_path = output_load_signal_trends_path.joinpath("load_sign
 logs_path = outputs_path.joinpath("logs")
 
 #### Love numbers job array logs.
-logs_subpaths = {
-    sub_path: logs_path.joinpath(sub_path) for sub_path in ["test_models", "love_numbers"]
+sub_paths = ["test_models", "love_numbers"]
+logs_subpaths = {sub_path: logs_path.joinpath(sub_path) for sub_path in sub_paths} | {
+    "interpolate_" + sub_path: logs_path.joinpath("interpolate_" + sub_path)
+    for sub_path in sub_paths
 }
+
 
 #### Intermediate preprocessing/post-processing results.
 worker_information_subpaths = {
