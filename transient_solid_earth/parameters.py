@@ -123,7 +123,7 @@ class DiscretizationParameters(BaseModel):
     maximum_tolerance: float = 1.0e-2  # Curvature criterion.
     exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
     rounding: int = 10
-    min_step: float = 1.2
+    min_step: float = 1.4
 
 
 DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS = DiscretizationParameters()

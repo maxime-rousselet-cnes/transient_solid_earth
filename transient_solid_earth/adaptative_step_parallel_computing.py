@@ -147,7 +147,10 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
             mask = numpy.any(
                 numpy.abs(((x_1 - x_0) * f[2:] + (x_2 - x_1) * f[:-2]) / x_span - f[1:-1])
                 > self.discretization_parameters.maximum_tolerance
-                * (numpy.abs(f[2:] - f[:-2]) + numpy.abs(f[-1] - f[0])),
+                * (
+                    numpy.abs(f[2:] - f[:-2])
+                    + numpy.abs(numpy.max(f, axis=0) - numpy.min(f, axis=0))
+                ),
                 axis=tuple(range(1, f.ndim)),
             )
 
