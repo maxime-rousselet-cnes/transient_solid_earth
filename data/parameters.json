@@ -48,10 +48,10 @@
                 "high_degrees_radius_sensibility": 1.0e-4,
                 "minimal_radius": 1.0e3,
                 "atol": 1.0e-14,
-                "rtol": 1.0e-7
+                "rtol": 1.0e-7,
+                "n_min_for_asymptotic_behavior": 5000
             },
-            "n_max_green": 10000,
-            "n_min_for_asymptotic_behavior": 5000
+            "n_max_green": 10000
         },
         "options": {
             "compute_green": true,
