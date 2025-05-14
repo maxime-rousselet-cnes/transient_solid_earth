@@ -1,15 +1,100 @@
+# pylint: disable=consider-using-with
 """
 Needed to monitor parallel computing.
 """
 
+import os
+import shutil
+import subprocess
 import threading
-from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from itertools import islice
+from multiprocessing import cpu_count, get_context
 
 from .database import save_base_model
-from .jobs import run_job_array
+from .parallel_processing_functions import functions
 from .parameters import ParallelComputingParameters
-from .paths import worker_information_subpaths
+from .paths import logs_subpaths, worker_information_subpaths
 from .worker_parser import WorkerInformation
+
+
+def chunked(iterable, size):
+    """
+    Splits an iterable into chunks of a given maximum size.
+    """
+
+    it = iter(iterable)
+    while chunk := list(islice(it, size)):
+        yield chunk
+
+
+def submit_local_job(function_name: str, worker_information: WorkerInformation) -> None:
+    """
+    To avoid resource-allocation explosion.
+    """
+
+    functions[function_name](worker_information=worker_information)
+
+
+def submit_local_jobs(
+    function_name: str,
+    max_concurrent_processes_factor: int,
+    job_array_worker_informations: list[list[WorkerInformation]],
+) -> None:
+    """
+    Local parallel processing.
+    """
+    flat_worker_infos = sum(job_array_worker_informations, [])
+    submit_fn = partial(submit_local_job, function_name)  # Partially applies the function name.
+
+    with ProcessPoolExecutor(
+        max_workers=cpu_count() // max_concurrent_processes_factor, mp_context=get_context("fork")
+    ) as executor:
+        list(executor.map(submit_fn, flat_worker_infos))
+
+
+def is_slurm_available() -> bool:
+    """
+    Verifies if the scheduler is available for HPC computing.
+    """
+
+    slurm_path = shutil.which("sbatch")
+
+    if not slurm_path:
+        return False
+
+    try:
+        result = subprocess.run(
+            ["scontrol", "ping"], capture_output=True, text=True, timeout=2.0, check=True
+        )
+        return "Slurmctld" in result.stdout and "responding" in result.stdout
+    except (subprocess.SubprocessError, FileNotFoundError, subprocess.CalledProcessError):
+        return False
+
+
+def submit_slurm_jobs(
+    n_jobs: int,
+    function_name: str,
+    job_array_name: str,
+    job_array_max_file_size: int,
+) -> None:
+    """
+    Submits a job array using sbatch.
+    """
+
+    os.makedirs(logs_subpaths[function_name], exist_ok=True)
+
+    subprocess.Popen(
+        [
+            "sbatch",
+            f"--array=0-{n_jobs - 1}",
+            "job_array.sh",
+            function_name,
+            job_array_name,
+            str(job_array_max_file_size),
+        ]
+    )
 
 
 class ProcessCatalog:
@@ -20,8 +105,10 @@ class ProcessCatalog:
     to_process: set[tuple[str, float, float]] = set()
     in_process: dict[tuple[str, float], set[float]] = {}
     parallel_computing_parameters: ParallelComputingParameters
-    semaphore: threading.Semaphore
+    slurm: bool
+    thread_semaphore: threading.Semaphore
     i_job_array: int = 0
+    i_job_array_lock: threading.Lock
     function_name: str
     threads: list[threading.Thread] = []
 
@@ -36,9 +123,11 @@ class ProcessCatalog:
 
         self.function_name = function_name
         self.parallel_computing_parameters = parallel_computing_parameters
-        self.semaphore = threading.Semaphore(
-            value=parallel_computing_parameters.cpu_buffer_factor * cpu_count()
+        self.slurm = is_slurm_available()
+        self.thread_semaphore = threading.Semaphore(
+            value=cpu_count() // parallel_computing_parameters.max_concurrent_threads_factor
         )
+        self.i_job_array_lock = threading.Lock()
 
     def update_in_process(
         self, model_id: str, fixed_parameter: float, variable_parameter: float
@@ -52,67 +141,104 @@ class ProcessCatalog:
         else:
             self.in_process[(model_id, fixed_parameter)] = set([variable_parameter])
 
+    def run_job_array(
+        self,
+        n_jobs: int,
+        job_array_worker_informations: list[list[WorkerInformation]],
+    ) -> threading.Thread:
+        """
+        Runs parallel computing without blocking.
+        """
+
+        def thread_target():
+
+            with self.i_job_array_lock:
+                i_job_array_snapshot = self.i_job_array
+
+            with self.thread_semaphore:  # Limits concurent threads.
+                if self.slurm:
+
+                    # Writes worker informations in files so that separate jobs can read them.
+                    for i_worker_informations_file, worker_informations in enumerate(
+                        job_array_worker_informations[:-1]
+                    ):
+                        save_base_model(
+                            obj=worker_informations,
+                            name=str(i_worker_informations_file),
+                            path=worker_information_subpaths[self.function_name].joinpath(
+                                str(i_job_array_snapshot)
+                            ),
+                        )
+
+                    submit_slurm_jobs(
+                        n_jobs=n_jobs,
+                        function_name=self.function_name,
+                        job_array_name=i_job_array_snapshot,
+                        job_array_max_file_size=(
+                            self.parallel_computing_parameters.job_array_max_file_size
+                        ),
+                    )
+
+                else:
+                    submit_local_jobs(
+                        function_name=self.function_name,
+                        max_concurrent_processes_factor=(
+                            self.parallel_computing_parameters.max_concurrent_processes_factor
+                        ),
+                        job_array_worker_informations=job_array_worker_informations,
+                    )
+
+        thread = threading.Thread(target=thread_target, daemon=True)
+        thread.start()
+        return thread
+
     def schedule_jobs(self) -> None:
         """
         Schedules jobs for a job array. Empties 'to_process' and updates 'in_process'.
         """
 
-        i_worker_informations_file, n_jobs = 0, len(self.to_process)
-        worker_informations: list[WorkerInformation] = []
+        jobs = list(self.to_process)
+        self.to_process.clear()
+        n_jobs = len(jobs)
 
-        # Create files for workers informations.
-        for i_job in range(1, n_jobs + 1):
+        worker_info_list = [
+            WorkerInformation(
+                model_id=model_id,
+                fixed_parameter=fixed_parameter,
+                variable_parameter=variable_parameter,
+            )
+            for model_id, fixed_parameter, variable_parameter in jobs
+        ]
 
-            model_id, fixed_parameter, variable_parameter = self.to_process.pop()
-
-            worker_informations += [
-                WorkerInformation(
-                    model_id=model_id,
-                    fixed_parameter=fixed_parameter,
-                    variable_parameter=variable_parameter,
-                )
-            ]
-
-            # Create a file for 'job_array_max_file_size' worker informations
-            if (i_job % self.parallel_computing_parameters.job_array_max_file_size == 0) or (
-                i_job == n_jobs
-            ):
-
-                save_base_model(
-                    obj=worker_informations,
-                    name=str(i_worker_informations_file),
-                    path=worker_information_subpaths[self.function_name].joinpath(
-                        str(self.i_job_array)
-                    ),
-                )
-                worker_informations = []
-                i_worker_informations_file += 1
-
-            # Updates 'in_process'.
+        for model_id, fixed_parameter, variable_parameter in jobs:
             self.update_in_process(
                 model_id=model_id,
                 fixed_parameter=fixed_parameter,
                 variable_parameter=variable_parameter,
             )
 
-        # Submits the job array.
-        self.threads.append(
-            run_job_array(
-                n_jobs=n_jobs,
-                function_name=self.function_name,
-                job_array_name=str(self.i_job_array),
-                job_array_max_file_size=self.parallel_computing_parameters.job_array_max_file_size,
-                semaphore=self.semaphore,
+        job_array_worker_informations = list(
+            chunked(
+                worker_info_list,
+                self.parallel_computing_parameters.job_array_max_file_size,
             )
         )
 
-        # Updates the job array ID.
-        self.i_job_array += 1
+        self.threads.append(
+            self.run_job_array(
+                n_jobs=n_jobs,
+                job_array_worker_informations=job_array_worker_informations,
+            )
+        )
 
-    def wait(self) -> None:
+        with self.i_job_array_lock:
+            self.i_job_array += 1
+
+    def wait_for_jobs(self) -> None:
         """
-        Releases all the slots.
+        Waits for all jobs to finish.
         """
 
         for thread in self.threads:
-            thread.join()
+            if thread.is_alive():
+                thread.join(timeout=0.1)

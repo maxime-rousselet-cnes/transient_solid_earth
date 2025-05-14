@@ -3,16 +3,25 @@ The class describes the radial quantities of a solid earth layer.
 """
 
 import dataclasses
-import warnings
 from typing import Callable, Optional
 
 import numpy
 from pydantic import BaseModel
-from scipy import integrate, interpolate
-from scipy.integrate import OdeSolution
+from scipy import interpolate
 from scipy.interpolate import make_lsq_spline
 
 from .parameters import SolidEarthNumericalParameters
+from .runge_kutta_scheme import runge_kutta_45
+
+
+def high_degree_approximation(
+    x: float, n: int, numerical_parameters: SolidEarthNumericalParameters
+) -> bool:
+    """
+    Checks whether to use high degrees approximation or not.
+    """
+
+    return x**n < numerical_parameters.integration_parameters.high_degrees_radius_sensibility
 
 
 def splprep_highdim(x: numpy.ndarray, u: numpy.ndarray, k: int = 3):
@@ -59,7 +68,7 @@ class ModelLayer(BaseModel):
     splines: dict[
         str, tuple[numpy.ndarray | list[float] | float, numpy.ndarray | list[float] | float, int]
     ] = {}
-    y_i_system: Optional[Callable[[numpy.ndarray], numpy.ndarray]] = None
+    y_i_system: Optional[Callable[[float, numpy.ndarray], numpy.ndarray]] = None
 
     @dataclasses.dataclass
     class Config:
@@ -218,24 +227,23 @@ class ModelLayer(BaseModel):
         )
 
     def integrate_y_i_system(
-        self, y_i: numpy.ndarray, numerical_parameters: SolidEarthNumericalParameters
+        self, y_i: numpy.ndarray, n: int, numerical_parameters: SolidEarthNumericalParameters
     ) -> numpy.ndarray:
         """
         Integrates the Y_i system from the bottom to the top of the layer.
         """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
 
-            solver: OdeSolution = integrate.solve_ivp(
-                fun=self.y_i_system,
-                t_span=(self.x_inf, self.x_sup),
-                y0=y_i,
-                method=numerical_parameters.integration_parameters.method,
-                t_eval=numerical_parameters.integration_parameters.t_eval,
-                rtol=numerical_parameters.integration_parameters.rtol,
-                atol=numerical_parameters.integration_parameters.atol,
-            )
-            return solver.y[:, -1]
+        # Numerical approximation for high degrees.
+        if high_degree_approximation(x=self.x_sup, n=n, numerical_parameters=numerical_parameters):
+            return y_i
+
+        return runge_kutta_45(
+            fun=self.y_i_system,
+            t_0=self.x_inf,
+            t_end=self.x_sup,
+            y_0=y_i,
+            integration_parameters=numerical_parameters.integration_parameters,
+        )
 
     def solid_to_fluid(
         self,

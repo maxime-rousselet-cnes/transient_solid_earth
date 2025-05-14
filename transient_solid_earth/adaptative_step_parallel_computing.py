@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy
 
-from .database import load_base_model, save_base_model
+from .database import load_complex_array, save_base_model
 from .file_creation_observer import FileCreationObserver
 from .functions import add_sorted, round_value
 from .model_type_names import MODEL_TYPE_NAMES
@@ -96,13 +96,16 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
 
             if (model_id, fixed_parameter) in self.in_process:
 
-                if variable_parameter in self.in_process[(model_id, fixed_parameter)]:
+                if variable_parameter in self.in_process[
+                    (model_id, fixed_parameter)
+                ] or variable_parameter == float("inf"):
 
                     # Updates 'in_process'.
-                    # print(model_id, fixed_parameter)
-                    # print(self.in_process[(model_id, fixed_parameter)])
-                    self.in_process[(model_id, fixed_parameter)].remove(variable_parameter)
-                    if len(self.in_process[(model_id, fixed_parameter)]) == 0:
+                    if variable_parameter in self.in_process[(model_id, fixed_parameter)]:
+                        self.in_process[(model_id, fixed_parameter)].remove(variable_parameter)
+                    if len(
+                        self.in_process[(model_id, fixed_parameter)]
+                    ) == 0 or variable_parameter == float("inf"):
                         del self.in_process[(model_id, fixed_parameter)]
 
                     # Updates 'just_processed'.
@@ -114,8 +117,7 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                         x=math.log(
                             variable_parameter, self.discretization_parameters.exponentiation_base
                         ),
-                        values=numpy.array(object=load_base_model(name="real", path=path))
-                        + 1.0j * numpy.array(object=load_base_model(name="imag", path=path)),
+                        values=load_complex_array(path=path),
                     )
 
     def refine_discretization(self) -> None:
@@ -265,3 +267,4 @@ def adaptative_step_parallel_computing_loop(
     finally:
 
         process_catalog.file_creation_observer.stop()
+        process_catalog.wait_for_jobs()

@@ -2,12 +2,34 @@
 Numerical constants.
 """
 
+from enum import Enum
 from typing import Optional
 
 import numpy
 from pydantic import BaseModel
 
 from .paths import SolidEarthModelPart
+
+
+class Direction(Enum):
+    """
+    Love numbers / Green functions directions.
+    """
+
+    RADIAL = 0
+    TANGENTIAL = 1
+    POTENTIAL = 2
+
+
+class BoundaryCondition(Enum):
+    """
+    Love numbers / Green functions boundary conditions.
+    """
+
+    LOAD = 0
+    SHEAR = 1
+    POETENTIAL = 2
+
 
 LAT_LON_PROJECTION = 4326
 EARTH_EQUAL_PROJECTION = 3857

@@ -12,6 +12,20 @@ from scipy import interpolate
 from .constants import MASK_DECIMALS
 
 
+def sum_lists(lists: list[list]) -> list:
+    """
+    Concatenates lists. Needed to iterate on parameter variations.
+    """
+
+    concatenated_list = []
+
+    for elt in lists:
+        for sub_elt in elt:
+            concatenated_list += sub_elt
+
+    return concatenated_list
+
+
 def round_value(t: float, rounding: int) -> float:
     """
     Truncature in scientific notation.
@@ -20,9 +34,15 @@ def round_value(t: float, rounding: int) -> float:
     x = numpy.asarray(t)
     sign = numpy.sign(x)
     x_abs = numpy.abs(x)
-    nonzero = x_abs != 0
+
     exp = numpy.zeros_like(x_abs, dtype=int)
-    exp[nonzero] = numpy.floor(numpy.log10(x_abs[nonzero])).astype(int)
+
+    # Valid values are finite and non-zero
+    valid = numpy.isfinite(x_abs) & (x_abs != 0)
+
+    with numpy.errstate(divide="ignore", invalid="ignore"):
+        exp[valid] = numpy.floor(numpy.log10(x_abs[valid])).astype(int)
+
     factor = 10.0 ** (exp - rounding + 1)
     truncated = numpy.floor(x_abs / factor) * factor
     return sign * truncated
@@ -49,6 +69,7 @@ def add_sorted(
             + result_dict["values"][position:].tolist()
         ),
     }
+
 
 def interpolate_array(
     x_values: numpy.ndarray, y_values: numpy.ndarray, new_x_values: numpy.ndarray

@@ -10,8 +10,8 @@ import numpy
 from scipy import interpolate
 
 from .constants import INITIAL_Y_VECTOR, years_to_seconds
-from .database import save_base_model
-from .model_layer import ModelLayer
+from .database import save_complex_array
+from .model_layer import ModelLayer, high_degree_approximation
 from .paths import get_love_numbers_subpath
 from .rheological_formulas import (
     b_computing,
@@ -203,25 +203,26 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         numerical_parameters = self.solid_earth_parameters.numerical_parameters
 
         # The basis of solution to integrate.
-        y_1 = INITIAL_Y_VECTOR[0, :].flatten()
-        y_2 = INITIAL_Y_VECTOR[1, :].flatten()
-        y_3 = INITIAL_Y_VECTOR[2, :].flatten()
+        y_1 = INITIAL_Y_VECTOR[0]
+        y_2 = INITIAL_Y_VECTOR[1]
+        y_3 = INITIAL_Y_VECTOR[2]
 
-        # I - Integrate from Geocenter to CMB for low degrees only.
-        if self.n <= numerical_parameters.integration_parameters.n_max_for_sub_cmb_integration:
+        if not high_degree_approximation(
+            x=self.model_layers[0].x_sup, n=self.n, numerical_parameters=numerical_parameters
+        ):
 
             # Integrates in the Inner-Core.
             for n_layer in range(
                 self.solid_earth_parameters.model.structure_parameters.below_icb_layers
             ):
                 y_1 = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_1, numerical_parameters=numerical_parameters
+                    y_i=y_1, n=self.n, numerical_parameters=numerical_parameters
                 )
                 y_2 = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_2, numerical_parameters=numerical_parameters
+                    y_i=y_2, n=self.n, numerical_parameters=numerical_parameters
                 )
                 y_3 = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y_3, numerical_parameters=numerical_parameters
+                    y_i=y_3, n=self.n, numerical_parameters=numerical_parameters
                 )
 
             # ICB Boundary conditions.
@@ -235,7 +236,7 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                 self.solid_earth_parameters.model.structure_parameters.below_cmb_layers,
             ):
                 y = self.model_layers[n_layer].integrate_y_i_system(
-                    y_i=y, numerical_parameters=numerical_parameters
+                    y_i=y, n=self.n, numerical_parameters=numerical_parameters
                 )
 
             # CMB Boundary conditions.
@@ -249,13 +250,13 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
             len(self.model_layers),
         ):
             y_1 = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_1, numerical_parameters=numerical_parameters
+                y_i=y_1, n=self.n, numerical_parameters=numerical_parameters
             )
             y_2 = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_2, numerical_parameters=numerical_parameters
+                y_i=y_2, n=self.n, numerical_parameters=numerical_parameters
             )
             y_3 = self.model_layers[n_layer].integrate_y_i_system(
-                y_i=y_3, numerical_parameters=numerical_parameters
+                y_i=y_3, n=self.n, numerical_parameters=numerical_parameters
             )
 
         # [
@@ -266,9 +267,11 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
         love_numbers = self.model_layers[-1].surface_solution(
             n=self.n, y_1_s=y_1, y_2_s=y_2, y_3_s=y_3
         )
+
         if save:
+
             path = self.get_subpath()
-            save_base_model(obj=love_numbers.real, name="real", path=path)
-            save_base_model(obj=love_numbers.imag, name="imag", path=path)
+            save_complex_array(obj=love_numbers, path=path)
             return None
+
         return love_numbers

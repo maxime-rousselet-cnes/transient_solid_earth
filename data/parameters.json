@@ -16,25 +16,42 @@
         },
         "degree_discretization": {
             "steps": [
-                10
+                1,
+                2,
+                5,
+                10,
+                50,
+                100,
+                200,
+                500,
+                1000,
+                10000
             ],
             "thresholds": [
-                10,
-                40
+                1,
+                20,
+                40,
+                100,
+                200,
+                400,
+                1000,
+                2000,
+                6000,
+                10000,
+                100000
             ]
         },
         "numerical_parameters": {
             "spline_number": 100,
-            "spline_degree": 3,
+            "spline_degree": 1,
             "integration_parameters": {
-                "n_max_for_sub_cmb_integration": 35,
-                "minimal_radius": 1e3,
-                "method": "DOP853",
-                "atol": 1e-14,
-                "rtol": 1e-11,
-                "t_eval": null
+                "high_degrees_radius_sensibility": 1.0e-4,
+                "minimal_radius": 1.0e3,
+                "atol": 1.0e-14,
+                "rtol": 1.0e-7
             },
-            "n_max_green": 90
+            "n_max_green": 10000,
+            "n_min_for_asymptotic_behavior": 5000
         },
         "options": {
             "compute_green": true,
@@ -177,17 +194,18 @@
     },
     "parallel_computing": {
         "job_array_max_file_size": 1000,
-        "cpu_buffer_factor": 10
+        "max_concurrent_threads_factor": 4,
+        "max_concurrent_processes_factor": 4
     },
     "discretization": {
         "love_numbers": {
             "value_min": 1.0e-2,
             "value_max": 1.0e5,
             "n_0": 3,
-            "maximum_tolerance": 1.0e-2,
+            "maximum_tolerance": 5.0e-3,
             "exponentiation_base": 10.0,
             "round": 10,
-            "min_step": 1.4
+            "min_step": 1.2
         },
         "test_models": {
             "value_min": 1.0e-2,

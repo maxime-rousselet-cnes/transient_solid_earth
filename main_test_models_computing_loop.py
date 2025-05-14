@@ -3,26 +3,24 @@ Main call for Love numbers computing loop on rheologies.
 """
 
 import shutil
+import sys
 from itertools import product
 from time import time
 
 from transient_solid_earth import (
     adaptative_step_parallel_computing_loop,
-    interpolate_on_grid_parallel_computing_loop,
+    interpolate_parallel_computing_loop,
     load_parameters,
     logs_subpaths,
 )
 
 if __name__ == "__main__":
 
-    # Clears.
-    if logs_subpaths["test_models"].exists():
-        shutil.rmtree(logs_subpaths["test_models"])
-
-    x_0_list = [1.0, 2.0]
-    alpha_list = [-1.0, 1.0]
-    beta_list = [-1.0, 1.0]
-    gamma_list = [-1.0, 1.0]
+    # Initializes.
+    x_0_list = [1e-1, 0.25, 2.0]
+    alpha_list = [-1.0, 10.0]
+    beta_list = [-1.0, 100.0]
+    gamma_list = [-1.0, 10.0]
 
     parameters = load_parameters()
     rheologies = [
@@ -30,8 +28,13 @@ if __name__ == "__main__":
         for alpha, beta, gamma in product(alpha_list, beta_list, gamma_list)
     ]
 
+    # Clears.
+    if logs_subpaths["test_models"].exists():
+        shutil.rmtree(logs_subpaths["test_models"])
+
     t_0 = time()
 
+    # Processes.
     adaptative_step_parallel_computing_loop(
         rheologies=rheologies,
         function_name="test_models",
@@ -39,11 +42,22 @@ if __name__ == "__main__":
         parameters=parameters,
     )
 
-    t_1 = time()
-    print(t_1 - t_0)
+    print(time() - t_0)
 
-    interpolate_on_grid_parallel_computing_loop(
+    if logs_subpaths["interpolate_test_models"].exists():
+        shutil.rmtree(logs_subpaths["interpolate_test_models"])
+
+    # Interpolates.
+    interpolate_parallel_computing_loop(
         function_name="test_models", rheologies=rheologies, parameters=parameters
     )
 
-    print(time() - t_1)
+    # Interpolates.
+    interpolate_parallel_computing_loop(
+        function_name="test_models",
+        rheologies=rheologies,
+        parameters=parameters,
+        fixed_parameter_new_values=[1.0, 1.5, 2.0],
+    )
+
+    sys.exit()

@@ -5,7 +5,7 @@ RAM to file conversions.
 import json
 from pathlib import Path
 from time import sleep
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 
 import numpy
 from pydantic import BaseModel
@@ -63,27 +63,32 @@ def load_base_model(
     return loaded_content if not base_model_type else base_model_type(**loaded_content)
 
 
-class ComplexDict(TypedDict):
+def load_complex_array(path: Path, name: Optional[str] = None) -> numpy.ndarray:
     """
-    Ensures that a dictionary contains a real part and an imaginary part.
+    Loads a complex array.
     """
 
-    real: numpy.ndarray[float]
-    imag: numpy.ndarray[float]
+    path = path if not name else path.joinpath(name)
+    return numpy.array(object=load_base_model(name="real", path=path)) + 1.0j * numpy.array(
+        object=load_base_model(name="imag", path=path)
+    )
 
 
-def complex_array_to_dict(array: numpy.ndarray[complex]) -> ComplexDict:
+def save_complex_array(
+    obj: dict[str, numpy.ndarray] | numpy.ndarray, path: Path, name: Optional[str] = None
+) -> None:
     """
-    Transforms a complex numpy array into a dictionary compatible wih (.JSON).
+    Saves a complex array.
     """
-    return {"real": array.real, "imag": array.imag}
 
-
-def complex_dict_to_array(dictionary: ComplexDict) -> numpy.ndarray[complex]:
-    """
-    Transforms a complex dictionary into a numpy array.
-    """
-    return dictionary["real"] + dictionary["imag"] * 1.0j
+    if isinstance(obj, numpy.ndarray):
+        obj = {
+            "real": numpy.real(obj),
+            "imag": numpy.imag(obj),
+        }
+    path = path if not name else path.joinpath(name)
+    save_base_model(obj=obj["real"], name="real", path=path)
+    save_base_model(obj=obj["imag"], name="imag", path=path)
 
 
 def generate_degrees_list(

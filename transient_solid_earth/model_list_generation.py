@@ -6,6 +6,7 @@ from copy import deepcopy
 from itertools import product
 from typing import Any, Optional
 
+from .functions import sum_lists
 from .parameters import (
     SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS,
     LoadNumericalModelParameters,
@@ -52,20 +53,6 @@ def create_solid_earth_model_description_variation(
     )
 
     return new_model_description_name
-
-
-def sum_lists(lists: list[list]) -> list:
-    """
-    Concatenates lists. Needed to iterate on parameter variations.
-    """
-
-    concatenated_list = []
-
-    for elt in lists:
-        for sub_elt in elt:
-            concatenated_list += sub_elt
-
-    return concatenated_list
 
 
 def generate_parameter_value_possibilities(

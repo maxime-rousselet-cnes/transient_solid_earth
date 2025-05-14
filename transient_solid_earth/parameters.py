@@ -118,12 +118,12 @@ class DiscretizationParameters(BaseModel):
     """
 
     value_min: float = 1.0e-2
-    value_max: float = 1.0e6
+    value_max: float = 1.0e5
     n_0: int = 3  # Minimal number of evaluations. Should be >=3.
-    maximum_tolerance: float = 1.0e-2  # Curvature criterion.
+    maximum_tolerance: float = 5.0e-3  # Curvature criterion.
     exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
     rounding: int = 10
-    min_step: float = 1.4
+    min_step: float = 1.2
 
 
 DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
@@ -152,8 +152,8 @@ class SolidEarthDegreeDiscretizationParameters(BaseModel):
     Describes the initial solid Earth model discretization on the degree axis.
     """
 
-    steps: list[int] = [1, 2, 5]
-    thresholds: list[int] = [1, 20, 40, 100]
+    steps: list[int] = [1, 2, 5, 10, 50, 100, 200, 500, 1000, 10000]
+    thresholds: list[int] = [1, 20, 40, 100, 200, 400, 1000, 2000, 6000, 10000, 100000]
 
 
 DEFAULT_SOLID_EARTH_DEGREE_DISCRETIZATION_PARAMETERS = SolidEarthDegreeDiscretizationParameters()
@@ -164,14 +164,13 @@ class SolidEarthIntegrationNumericalParameters(BaseModel):
     Describes the parameters necessary for the numerical integration of the Y_i system.
     """
 
-    n_max_for_sub_cmb_integration: (
-        int  # Maximal degree for integration under the Core-Mantle Boundary.
-    ) = 35
+    high_degrees_radius_sensibility: (
+        float  # Integrates starting whenever x**n > high_degrees_radius_sensibility.
+    ) = 1.0e-4
     minimal_radius: float = 1.0e3  # r ~= 0 km exact definition (m).
-    method: str = "DOP853"  # Solver's numerical integration method.
     atol: float = 1.0e-14  # The solver keeps the local error estimates under atol + rtol * abs(yr).
-    rtol: float = 1.0e-11  # See atol parameter description.
-    t_eval: Optional[float] = None
+    rtol: float = 1.0e-7  # See atol parameter description.
+    n_min_for_asymptotic_behavior: int = 5000
 
 
 DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS = SolidEarthIntegrationNumericalParameters()
@@ -187,7 +186,7 @@ class SolidEarthNumericalParameters(BaseModel):
     integration_parameters: SolidEarthIntegrationNumericalParameters = (
         DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
     )
-    n_max_green: int = 90
+    n_max_green: int = 10000
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
@@ -199,7 +198,7 @@ class SolidEarthNumericalParameters(BaseModel):
         integration_parameters: SolidEarthIntegrationNumericalParameters = (
             DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
         ),
-        n_max_green: int = 90,
+        n_max_green: int = 10000,
     ) -> None:
 
         super().__init__()
@@ -237,7 +236,8 @@ class ParallelComputingParameters(BaseModel):
     """
 
     job_array_max_file_size: int = 1000
-    cpu_buffer_factor: int = 10
+    max_concurrent_threads_factor: int = 4
+    max_concurrent_processes_factor: int = 4
 
 
 DEFAULT_PARALLEL_COMPUTING_PARAMETERS = ParallelComputingParameters()
@@ -555,3 +555,14 @@ ELASTIC_SOLID_EARTH_MODEL_OPTION_PARAMETERS = SolidEarthModelOptionParameters(
     use_short_term_anelasticity=False,
     use_bounded_attenuation_functions=False,
 )
+
+
+def asymptotic_degree_value(parameters: Parameters) -> int:
+    """
+    Returns the maximum degree for the asymptotic love numbers.
+    """
+
+    return min(
+        parameters.solid_earth.numerical_parameters.n_max_green,
+        parameters.solid_earth.degree_discretization.thresholds[-1],
+    )

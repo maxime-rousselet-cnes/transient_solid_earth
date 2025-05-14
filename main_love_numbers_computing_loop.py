@@ -3,24 +3,38 @@ Main call for Love numbers computing loop on rheologies.
 """
 
 import shutil
+import sys
 from time import time
+
+import numpy
 
 from transient_solid_earth import (
     SolidEarthModelPart,
     adaptative_step_parallel_computing_loop,
+    asymptotic_degree_value,
+    asymptotic_love_numbers_computing_loop,
     create_all_model_variations,
     generate_degrees_list,
-    interpolate_on_grid_parallel_computing_loop,
+    interpolate_parallel_computing_loop,
     load_parameters,
     logs_subpaths,
 )
 
+CLEAR_COMPUTING = False
+CLEAR_INTERPOLATING = True
+CLEAR_ASYMPTOTIC = True
+
 if __name__ == "__main__":
 
     # Clears.
-    if logs_subpaths["love_numbers"].exists():
+    if CLEAR_COMPUTING and logs_subpaths["love_numbers"].exists():
         shutil.rmtree(logs_subpaths["love_numbers"])
+    if CLEAR_INTERPOLATING and logs_subpaths["interpolate_love_numbers"].exists():
+        shutil.rmtree(logs_subpaths["interpolate_love_numbers"])
+    if CLEAR_ASYMPTOTIC and logs_subpaths["asymptotic_love_numbers"].exists():
+        shutil.rmtree(logs_subpaths["asymptotic_love_numbers"])
 
+    # Initializes.
     parameters = load_parameters()
 
     models: list[tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]] = (
@@ -29,10 +43,11 @@ if __name__ == "__main__":
 
     for elastic_model, anelastic_models in models:
 
-        t_0 = time()
-
         rheologies = [elastic_model] + anelastic_models
 
+        t = time()
+
+        # Processes.
         adaptative_step_parallel_computing_loop(
             rheologies=rheologies,
             function_name="love_numbers",
@@ -43,11 +58,24 @@ if __name__ == "__main__":
             parameters=parameters,
         )
 
-        t_1 = time()
-        print(t_1 - t_0)
-
-        interpolate_on_grid_parallel_computing_loop(
+        # Interpolates on periods.
+        interpolate_parallel_computing_loop(
             function_name="love_numbers", rheologies=rheologies, parameters=parameters
         )
 
-        print(time() - t_1)
+        # Interpolates on degrees.
+        interpolate_parallel_computing_loop(
+            function_name="love_numbers",
+            rheologies=rheologies,
+            parameters=parameters,
+            fixed_parameter_new_values=numpy.arange(
+                start=1,
+                stop=asymptotic_degree_value(parameters=parameters),
+            ).tolist(),
+        )
+
+        asymptotic_love_numbers_computing_loop(rheologies=rheologies, parameters=parameters)
+
+        print(time() - t)
+
+    sys.exit()
