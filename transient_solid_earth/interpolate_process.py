@@ -11,7 +11,6 @@ from scipy import interpolate
 from .database import load_base_model, save_base_model, save_complex_array
 from .functions import generate_n_factor
 from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
-
 from .worker_parser import WorkerInformation
 
 PARTS = ["real", "imag"]
@@ -144,10 +143,7 @@ def interpolate_on_variable_parameter(
 
             if numpy.inf in variable_parameter:
                 # Handles the elastic case.
-                output.append(
-                    inputs[part][fixed_parameter]["values"][0]
-                    * numpy.ones(shape=numpy.shape(variable_parameter_list))
-                )
+                output.append(inputs[part][fixed_parameter]["values"])  # Length 1 along axis 1.
             else:
                 output.append(
                     interpolate.interp1d(

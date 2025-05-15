@@ -31,7 +31,7 @@ def fit_limit_inverse_model(
 
     coeffs, *_ = numpy.linalg.lstsq(x, y_values_flat, rcond=None)
 
-    output_shape = y_shape[1:]  # shape after axis 0
+    output_shape = y_shape[1:]  # Shape after axis 0.
     l: numpy.ndarray = coeffs[0]
     a: numpy.ndarray = coeffs[1]
     return l.reshape(output_shape), a.reshape(output_shape)

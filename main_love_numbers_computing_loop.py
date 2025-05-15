@@ -21,7 +21,7 @@ from transient_solid_earth import (
 )
 
 CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = False
+CLEAR_INTERPOLATING = True
 CLEAR_ASYMPTOTIC = True
 
 if __name__ == "__main__":
