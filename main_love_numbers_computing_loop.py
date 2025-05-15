@@ -21,8 +21,9 @@ from transient_solid_earth import (
 )
 
 CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = True
+CLEAR_INTERPOLATING = False
 CLEAR_ASYMPTOTIC = True
+CLEAR_GREEN = True
 
 if __name__ == "__main__":
 
@@ -33,6 +34,8 @@ if __name__ == "__main__":
         shutil.rmtree(logs_subpaths["interpolate_love_numbers"])
     if CLEAR_ASYMPTOTIC and logs_subpaths["asymptotic_love_numbers"].exists():
         shutil.rmtree(logs_subpaths["asymptotic_love_numbers"])
+    if CLEAR_GREEN and logs_subpaths["green_functions"].exists():
+        shutil.rmtree(logs_subpaths["green_functions"])
 
     # Initializes.
     parameters = load_parameters()
@@ -83,9 +86,19 @@ if __name__ == "__main__":
         t_3 = time()
         print(t_3 - t_2)
 
+        # Computes asymptotic Love numbers.
         asymptotic_love_numbers_computing_loop(rheologies=rheologies, parameters=parameters)
 
         t_4 = time()
         print(t_4 - t_3)
+
+        # Computes Green functions.
+        adaptative_step_parallel_computing_loop(
+            rheologies=rheologies,
+            function_name="green_functions",
+            parameters=parameters,
+        )
+        t_5 = time()
+        print(t_5 - t_4)
 
     os._exit(status=0)

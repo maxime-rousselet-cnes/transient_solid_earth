@@ -220,7 +220,7 @@
         },
         "green_functions": {
             "value_min": 1.0e-10,
-            "value_max": 180.0,
+            "value_max": 179.5,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "precision": 1.0e-4,

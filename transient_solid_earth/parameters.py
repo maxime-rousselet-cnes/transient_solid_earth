@@ -140,7 +140,7 @@ DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
 )
 DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
     value_min=1.0e-10,
-    value_max=180.0,
+    value_max=179.5,
     n_0=3,
     maximum_tolerance=5e-3,
     precision=1.0e-4,

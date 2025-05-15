@@ -14,5 +14,7 @@ MODEL_TYPE_NAMES: dict[str, Type[MODEL]] = {
     "love_numbers": SolidEarthFullNumericalModel,
     "interpolate_test_models": TestModel,
     "interpolate_love_numbers": GenericRheologyModel,
+    "green_functions": GenericRheologyModel,
+    "interpolate_green_functions": GenericRheologyModel,
     "asymptotic_love_numbers": GenericRheologyModel,
 }
