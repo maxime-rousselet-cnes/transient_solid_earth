@@ -7,9 +7,19 @@ from typing import Optional
 import numpy
 from pyshtools import SHCoeffs
 from pyshtools.shclasses import DHRealGrid
-from scipy import interpolate
 
 from .constants import MASK_DECIMALS
+
+
+def generate_n_factor(fixed_parameter_values: numpy.ndarray) -> numpy.ndarray:
+    """
+    Because nl_n and nk_n are better to interpolate.
+    """
+
+    n_factor = numpy.ones(shape=(len(fixed_parameter_values), 1, 1, 3))
+    n_factor[:, :, :, 1] = numpy.array(object=fixed_parameter_values)[:, None, None]
+    n_factor[:, :, :, 2] = n_factor[:, :, :, 1]
+    return n_factor
 
 
 def sum_lists(lists: list[list]) -> list:
@@ -69,60 +79,6 @@ def add_sorted(
             + result_dict["values"][position:].tolist()
         ),
     }
-
-
-def interpolate_array(
-    x_values: numpy.ndarray, y_values: numpy.ndarray, new_x_values: numpy.ndarray
-) -> numpy.ndarray:
-    """
-    1D-Interpolates the given data on its first axis, whatever its shape is.
-    """
-
-    # Flattens all other dimensions.
-    shape = y_values.shape
-    y_values.reshape((shape[0], -1))
-    components = y_values.shape[1]
-
-    # Initializes
-    function_values = numpy.zeros(shape=(len(new_x_values), components), dtype=complex)
-
-    # Loops on components
-    for i_component, component in enumerate(y_values.transpose()):
-
-        # Creates callable (linear).
-        function = interpolate.interp1d(x=x_values, y=component, kind="linear")
-
-        # Calls linear interpolation on new x values.
-        function_values[:, i_component] = function(x=new_x_values)
-
-    #  Converts back into initial other dimension shapes.
-    function_values.reshape((len(new_x_values), *shape[1:]))
-    return function_values
-
-
-def interpolate_all(
-    x_values_per_component: list[numpy.ndarray],
-    function_values: list[numpy.ndarray],
-    x_shared_values: numpy.ndarray,
-) -> numpy.ndarray:
-    """
-    Interpolate several function values on shared abscissas.
-    """
-    return numpy.array(
-        object=(
-            function_values
-            if len(x_shared_values) == 1
-            and x_shared_values[0] == numpy.inf  # Manages elastic case.
-            else [
-                interpolate_array(
-                    x_values=x_tab,
-                    y_values=function_values_tab,
-                    new_x_values=x_shared_values,
-                )
-                for x_tab, function_values_tab in zip(x_values_per_component, function_values)
-            ]
-        )
-    )
 
 
 def get_degrees_indices(degrees: list[int], degrees_to_plot: list[int]) -> list[int]:

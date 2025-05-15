@@ -5,6 +5,7 @@ To be called for parallel processing.
 import numpy
 
 from .database import load_base_model, save_complex_array
+from .functions import generate_n_factor
 from .paths import intermediate_result_subpaths
 from .worker_parser import WorkerInformation
 
@@ -60,14 +61,19 @@ def compute_asymptotic_love_numbers(worker_information: WorkerInformation) -> No
     min_index_for_asymptotic_behavior = numpy.searchsorted(
         degrees, n_min_for_asymptotic_behavior, side="left"
     )
-    values = love_numbers["values"] + 1.0j * load_base_model(name="imag", path=load_path)["values"]
+    values = numpy.array(object=love_numbers["values"]) + 1.0j * numpy.array(
+        object=load_base_model(name="imag", path=load_path)["values"]
+    )
 
     for i_period, period in enumerate(periods):
 
         # Computes the asymptotic Love numbers.
         asymptotic_love_numbers_order_0, asymptotic_love_numbers_order_1 = fit_limit_inverse_model(
-            n_values=degrees,
-            y_values=values[i_period, min_index_for_asymptotic_behavior:],
+            n_values=degrees[min_index_for_asymptotic_behavior:],
+            y_values=values[min_index_for_asymptotic_behavior:, i_period]
+            * generate_n_factor(fixed_parameter_values=degrees)[
+                min_index_for_asymptotic_behavior:, 0
+            ],
         )
 
         # Saves the results.

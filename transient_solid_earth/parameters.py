@@ -121,6 +121,7 @@ class DiscretizationParameters(BaseModel):
     value_max: float = 1.0e5
     n_0: int = 3  # Minimal number of evaluations. Should be >=3.
     maximum_tolerance: float = 5.0e-3  # Curvature criterion.
+    precision: float = 1.0e-4
     exponentiation_base: float = 10.0  # Because the discretization algorithm considers a log axis.
     rounding: int = 10
     min_step: float = 1.2
@@ -132,6 +133,7 @@ DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
     value_max=1.0e2,
     n_0=3,
     maximum_tolerance=5e-3,
+    precision=1.0e-4,
     exponentiation_base=10.0,
     rounding=10,
     min_step=1.2,
@@ -141,6 +143,7 @@ DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
     value_max=180.0,
     n_0=3,
     maximum_tolerance=5e-3,
+    precision=1.0e-4,
     exponentiation_base=10.0,
     round=10,
     min_step=1.2,

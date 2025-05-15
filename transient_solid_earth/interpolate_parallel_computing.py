@@ -10,7 +10,8 @@ import numpy
 from .database import save_base_model
 from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import DEFAULT_PARAMETERS, Parameters
-from .paths import intermediate_result_subpaths
+from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
+
 from .process_catalog import ProcessCatalog
 
 
@@ -80,4 +81,10 @@ def interpolate_parallel_computing_loop(
 
     # Runs a job per rheology and per fixed parameter.
     process_catalog.schedule_jobs()
-    process_catalog.wait_for_jobs()
+
+    # Waits for the jobs to finish.
+    process_catalog.wait_for_jobs(
+        subpath_name=(
+            INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME if fixed_parameter_new_values else None
+        )
+    )

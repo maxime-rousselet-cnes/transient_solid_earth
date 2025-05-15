@@ -100,6 +100,8 @@ intermediate_result_subpaths = {
     for sub_path, log_subpath in logs_subpaths.items()
 }
 
+INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME = "interpolated_on_fixed_parameter"
+
 
 def get_love_numbers_subpath(model_id: str, n: int, period: float) -> Path:
     """

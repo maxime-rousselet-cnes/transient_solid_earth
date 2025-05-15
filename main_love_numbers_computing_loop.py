@@ -2,8 +2,8 @@
 Main call for Love numbers computing loop on rheologies.
 """
 
+import os
 import shutil
-import sys
 from time import time
 
 import numpy
@@ -21,7 +21,7 @@ from transient_solid_earth import (
 )
 
 CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = True
+CLEAR_INTERPOLATING = False
 CLEAR_ASYMPTOTIC = True
 
 if __name__ == "__main__":
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
         rheologies = [elastic_model] + anelastic_models
 
-        t = time()
+        t_0 = time()
 
         # Processes.
         adaptative_step_parallel_computing_loop(
@@ -58,10 +58,16 @@ if __name__ == "__main__":
             parameters=parameters,
         )
 
+        t_1 = time()
+        print(t_1 - t_0)
+
         # Interpolates on periods.
         interpolate_parallel_computing_loop(
             function_name="love_numbers", rheologies=rheologies, parameters=parameters
         )
+
+        t_2 = time()
+        print(t_2 - t_1)
 
         # Interpolates on degrees.
         interpolate_parallel_computing_loop(
@@ -74,8 +80,12 @@ if __name__ == "__main__":
             ).tolist(),
         )
 
+        t_3 = time()
+        print(t_3 - t_2)
+
         asymptotic_love_numbers_computing_loop(rheologies=rheologies, parameters=parameters)
 
-        print(time() - t)
+        t_4 = time()
+        print(t_4 - t_3)
 
-    sys.exit()
+    os._exit(status=0)

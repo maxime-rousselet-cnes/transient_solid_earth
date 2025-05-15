@@ -2,8 +2,8 @@
 Main call for Love numbers computing loop on rheologies.
 """
 
+import os
 import shutil
-import sys
 from itertools import product
 from time import time
 
@@ -42,8 +42,6 @@ if __name__ == "__main__":
         parameters=parameters,
     )
 
-    print(time() - t_0)
-
     if logs_subpaths["interpolate_test_models"].exists():
         shutil.rmtree(logs_subpaths["interpolate_test_models"])
 
@@ -60,4 +58,6 @@ if __name__ == "__main__":
         fixed_parameter_new_values=[1.0, 1.5, 2.0],
     )
 
-    sys.exit()
+    print(time() - t_0)
+
+    os._exit(status=0)

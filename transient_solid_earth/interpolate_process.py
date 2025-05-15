@@ -9,7 +9,9 @@ import numpy
 from scipy import interpolate
 
 from .database import load_base_model, save_base_model, save_complex_array
-from .paths import intermediate_result_subpaths
+from .functions import generate_n_factor
+from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
+
 from .worker_parser import WorkerInformation
 
 PARTS = ["real", "imag"]
@@ -28,7 +30,7 @@ def worker_interpolate(worker_information: WorkerInformation, function_name: str
     # Check whether the task has already been computed.
     if save_path.joinpath(
         (
-            "interpolated_on_fixed_parameter"
+            INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME
             if worker_information.variable_parameter == 1.0
             else "real"
         )
@@ -78,17 +80,6 @@ def worker_interpolate(worker_information: WorkerInformation, function_name: str
     )
 
 
-def generate_n_factor(fixed_parameter_values: numpy.ndarray) -> numpy.ndarray:
-    """
-    Because nl_n and nk_n are better to interpolate.
-    """
-
-    n_factor = numpy.ones(shape=(len(fixed_parameter_values), 1, 1, 3))
-    n_factor[:, :, :, 1] = numpy.array(object=fixed_parameter_values)[:, None, None]
-    n_factor[:, :, :, 2] = n_factor[:, :, :, 1]
-    return n_factor
-
-
 def interpolate_on_fixed_parameter(function_name: str, save_path: Path) -> None:
     """
     Interpolates on the fixed parameter axis supposing data already shares the variable parameter
@@ -122,7 +113,9 @@ def interpolate_on_fixed_parameter(function_name: str, save_path: Path) -> None:
             / n_factor_post_interpolation
         )
 
-    save_complex_array(obj=result, name="interpolated_on_fixed_parameter", path=save_path)
+    save_complex_array(
+        obj=result, name=INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, path=save_path
+    )
     save_base_model(
         obj=input_data["variable_parameter"], name="variable_parameter_values", path=save_path
     )

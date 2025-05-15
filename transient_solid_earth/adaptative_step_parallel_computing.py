@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy
 
-from .database import load_complex_array, save_base_model
+from .database import load_base_model, load_complex_array, save_base_model
 from .file_creation_observer import FileCreationObserver
 from .functions import add_sorted, round_value
 from .model_type_names import MODEL_TYPE_NAMES
@@ -74,6 +74,16 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
             model_id = MODEL_TYPE_NAMES[function_name](
                 solid_earth_parameters=deepcopy(parameters.solid_earth), rheology=rheology
             ).model_id
+
+            # Eventually overwrites the fixed parameter list if it depends on the model.
+            if "green_functions" in function_name:
+                fixed_parameter_list: list = load_base_model(
+                    name="variable_parameter_values",
+                    path=intermediate_result_subpaths["interpolate_love_numbers"].joinpath(
+                        model_id
+                    ),
+                )
+
             for fixed_parameter in fixed_parameter_list:
                 self.processed[(model_id, fixed_parameter)] = {
                     "x": numpy.array(object=[]),
@@ -145,14 +155,21 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
             x_2 = x[2:].reshape(-1, *([1] * (f.ndim - 1)))
             x_span = x_2 - x_0
 
-            # Linear interpolation estimate at midpoints.
+            # Computes initial mask based on deviation from linear interpolation.
             mask = numpy.any(
                 numpy.abs(((x_1 - x_0) * f[2:] + (x_2 - x_1) * f[:-2]) / x_span - f[1:-1])
                 > self.discretization_parameters.maximum_tolerance
                 * (
-                    numpy.abs(f[2:] - f[:-2])
-                    + numpy.abs(numpy.max(f, axis=0) - numpy.min(f, axis=0))
+                    numpy.abs(f[2:] - f[:-2])  # Local variation
+                    + numpy.abs(numpy.max(f, axis=0) - numpy.min(f, axis=0))  # Global scale
                 ),
+                axis=tuple(range(1, f.ndim)),  # Apply across all non-x dimensions
+            )
+
+            # Suppresses refinement if the function varies too little between adjacent points.
+            mask &= ~numpy.all(
+                numpy.abs(f[2:] - f[1:-1])
+                < self.discretization_parameters.precision * numpy.abs(f[1:-1]),
                 axis=tuple(range(1, f.ndim)),
             )
 
@@ -267,4 +284,3 @@ def adaptative_step_parallel_computing_loop(
     finally:
 
         process_catalog.file_creation_observer.stop()
-        process_catalog.wait_for_jobs()

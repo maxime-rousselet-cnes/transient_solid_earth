@@ -8,14 +8,16 @@ import shutil
 import subprocess
 import threading
 from concurrent.futures import ProcessPoolExecutor
+from copy import deepcopy
 from functools import partial
 from itertools import islice
 from multiprocessing import cpu_count, get_context
+from typing import Optional
 
 from .database import save_base_model
 from .parallel_processing_functions import functions
 from .parameters import ParallelComputingParameters
-from .paths import logs_subpaths, worker_information_subpaths
+from .paths import intermediate_result_subpaths, logs_subpaths, worker_information_subpaths
 from .worker_parser import WorkerInformation
 
 
@@ -49,7 +51,13 @@ def submit_local_jobs(
     submit_fn = partial(submit_local_job, function_name)  # Partially applies the function name.
 
     with ProcessPoolExecutor(
-        max_workers=cpu_count() // max_concurrent_processes_factor, mp_context=get_context("fork")
+        max_workers=cpu_count()
+        // (
+            1  # Does not limit the number of prcesses if the loop is straightforward.
+            if ("interpolate" in function_name) or ("asymptotic" in function_name)
+            else max_concurrent_processes_factor
+        ),
+        mp_context=get_context("fork"),
     ) as executor:
         list(executor.map(submit_fn, flat_worker_infos))
 
@@ -234,11 +242,25 @@ class ProcessCatalog:
         with self.i_job_array_lock:
             self.i_job_array += 1
 
-    def wait_for_jobs(self) -> None:
+    def wait(self, timeout: float = 0.1) -> None:
         """
-        Waits for all jobs to finish.
+        Waits for all jobs to finish, or timeout
         """
 
         for thread in self.threads:
             if thread.is_alive():
-                thread.join(timeout=0.1)
+                thread.join(timeout=timeout)
+
+    def wait_for_jobs(self, subpath_name: Optional[str] = None) -> None:
+        """
+        Waits for all jobs to finish.
+        """
+
+        while self.in_process:
+            for (model_id, _), __ in deepcopy(self.in_process).items():
+                path = intermediate_result_subpaths[self.function_name].joinpath(model_id)
+                if subpath_name:
+                    path = path.joinpath(subpath_name)
+                if path.exists():
+                    self.in_process.pop((model_id, _))
+                    self.wait()

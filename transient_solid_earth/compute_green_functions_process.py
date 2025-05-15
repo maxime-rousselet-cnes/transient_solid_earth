@@ -7,7 +7,7 @@ from os import utime
 from pyshtools.legendre import legendre_lm
 
 from .database import load_base_model, load_complex_array
-from .paths import intermediate_result_subpaths
+from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
 from .separators import is_elastic
 from .worker_parser import WorkerInformation
 
@@ -16,8 +16,6 @@ def compute_green_functions(worker_information: WorkerInformation) -> None:
     """
     Computes Green functions for a given rheology.
     """
-
-    # TODO.
 
     save_path = (
         intermediate_result_subpaths["green_functions"]
@@ -37,9 +35,26 @@ def compute_green_functions(worker_information: WorkerInformation) -> None:
 
     else:
 
-        load_path = intermediate_result_subpaths["interpolate_love_numbers"].joinpath(
-            worker_information.model_id
+        load_path = (
+            intermediate_result_subpaths["interpolate_love_numbers"]
+            .joinpath(worker_information.model_id)
+            .joinpath(INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME)
         )
-        love_numbers = load_complex_array(path=load_path)
-        periods = load_base_model(name="variable_parameter_values", path=load_path)
-        degrees = load_base_model(name="fixed_parameter_values", path=load_path.parent)
+        periods: list = load_base_model(name="variable_parameter_values", path=load_path.parent)
+        love_numbers = load_complex_array(path=load_path)[
+            :, periods.index(worker_information.fixed_parameter)
+        ]
+        degrees = load_base_model(name="fixed_parameter_new_values", path=load_path.parent.parent)
+
+        asymptotic_love_numbers_order_0 = load_complex_array(
+            path=intermediate_result_subpaths["asymptotic_love_numbers"].joinpath(
+                worker_information.model_id
+            ),
+            name="order_0",
+        )
+        asymptotic_love_numbers_order_1 = load_complex_array(
+            path=intermediate_result_subpaths["asymptotic_love_numbers"].joinpath(
+                worker_information.model_id
+            ),
+            name="order_1",
+        )

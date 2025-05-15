@@ -203,6 +203,7 @@
             "value_max": 1.0e5,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
+            "precision": 1.0e-4,
             "exponentiation_base": 10.0,
             "round": 10,
             "min_step": 1.2
@@ -212,6 +213,7 @@
             "value_max": 1.0e2,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
+            "precision": 1.0e-4,
             "exponentiation_base": 10.0,
             "round": 10,
             "min_step": 1.2
@@ -221,6 +223,7 @@
             "value_max": 180.0,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
+            "precision": 1.0e-4,
             "exponentiation_base": 10.0,
             "round": 10,
             "min_step": 1.2
