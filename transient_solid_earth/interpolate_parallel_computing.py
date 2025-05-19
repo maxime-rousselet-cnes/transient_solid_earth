@@ -11,7 +11,6 @@ from .database import save_base_model
 from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import DEFAULT_PARAMETERS, Parameters
 from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
-
 from .process_catalog import ProcessCatalog
 
 
@@ -62,6 +61,7 @@ def interpolate_parallel_computing_loop(
     rheologies: list[dict],
     parameters: Parameters = DEFAULT_PARAMETERS,
     fixed_parameter_new_values: Optional[list[float] | numpy.ndarray] = None,
+    timeout: Optional[float] = None,
 ) -> None:
     """
     For every rheologies, interpolates on the chosen axis.
@@ -86,5 +86,6 @@ def interpolate_parallel_computing_loop(
     process_catalog.wait_for_jobs(
         subpath_name=(
             INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME if fixed_parameter_new_values else None
-        )
+        ),
+        timeout=timeout,
     )

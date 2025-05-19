@@ -21,7 +21,7 @@ from transient_solid_earth import (
 )
 
 CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = False
+CLEAR_INTERPOLATING = True
 CLEAR_ASYMPTOTIC = True
 CLEAR_GREEN = True
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     for elastic_model, anelastic_models in models:
 
-        rheologies = [elastic_model] + anelastic_models
+        rheologies = [elastic_model]  # + anelastic_models
 
         t_0 = time()
 
@@ -61,16 +61,10 @@ if __name__ == "__main__":
             parameters=parameters,
         )
 
-        t_1 = time()
-        print(t_1 - t_0)
-
         # Interpolates on periods.
         interpolate_parallel_computing_loop(
             function_name="love_numbers", rheologies=rheologies, parameters=parameters
         )
-
-        t_2 = time()
-        print(t_2 - t_1)
 
         # Interpolates on degrees.
         interpolate_parallel_computing_loop(
@@ -83,22 +77,18 @@ if __name__ == "__main__":
             ).tolist(),
         )
 
-        t_3 = time()
-        print(t_3 - t_2)
-
         # Computes asymptotic Love numbers.
         asymptotic_love_numbers_computing_loop(rheologies=rheologies, parameters=parameters)
 
-        t_4 = time()
-        print(t_4 - t_3)
-
         # Computes Green functions.
+
         adaptative_step_parallel_computing_loop(
             rheologies=rheologies,
             function_name="green_functions",
             parameters=parameters,
         )
-        t_5 = time()
-        print(t_5 - t_4)
+
+        t_1 = time()
+        print(t_1 - t_0)
 
     os._exit(status=0)

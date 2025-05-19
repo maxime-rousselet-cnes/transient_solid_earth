@@ -167,7 +167,7 @@ def create_all_model_variations(
             model_description_filenames[SolidEarthModelPart.SHORT_TERM_ANELASTICITY],
         ):
             for options in solid_earth_model_option_list:
-                # TODO.
+
                 all_anelastic_model_variations[
                     (
                         (
@@ -194,6 +194,7 @@ def create_all_model_variations(
                         else UNUSED_MODEL_PART_DEFAULT_NAME
                     ),
                 }
+
         all_model_variations += [
             (
                 {

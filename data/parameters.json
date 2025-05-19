@@ -51,7 +51,7 @@
                 "rtol": 1.0e-7,
                 "n_min_for_asymptotic_behavior": 5000
             },
-            "n_max_green": 10000
+            "n_max_green": 2000
         },
         "options": {
             "compute_green": true,
@@ -195,7 +195,8 @@
     "parallel_computing": {
         "job_array_max_file_size": 1000,
         "max_concurrent_threads_factor": 4,
-        "max_concurrent_processes_factor": 4
+        "max_concurrent_processes_factor": 4,
+        "timeout": 0.1
     },
     "discretization": {
         "love_numbers": {
@@ -219,7 +220,7 @@
             "min_step": 1.2
         },
         "green_functions": {
-            "value_min": 1.0e-10,
+            "value_min": 1.0e-5,
             "value_max": 179.5,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,

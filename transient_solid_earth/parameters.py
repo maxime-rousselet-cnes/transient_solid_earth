@@ -139,7 +139,7 @@ DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
     min_step=1.2,
 )
 DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
-    value_min=1.0e-10,
+    value_min=1.0e-5,
     value_max=179.5,
     n_0=3,
     maximum_tolerance=5e-3,
@@ -189,7 +189,7 @@ class SolidEarthNumericalParameters(BaseModel):
     integration_parameters: SolidEarthIntegrationNumericalParameters = (
         DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
     )
-    n_max_green: int = 10000
+    n_max_green: int = 2000
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
@@ -201,7 +201,7 @@ class SolidEarthNumericalParameters(BaseModel):
         integration_parameters: SolidEarthIntegrationNumericalParameters = (
             DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
         ),
-        n_max_green: int = 10000,
+        n_max_green: int = 2000,
     ) -> None:
 
         super().__init__()
@@ -241,6 +241,7 @@ class ParallelComputingParameters(BaseModel):
     job_array_max_file_size: int = 1000
     max_concurrent_threads_factor: int = 4
     max_concurrent_processes_factor: int = 4
+    timeout: float = 0.1
 
 
 DEFAULT_PARALLEL_COMPUTING_PARAMETERS = ParallelComputingParameters()

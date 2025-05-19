@@ -4,6 +4,7 @@ Describes the loop using adaptatives step for all considered rheologies.
 
 import math
 from copy import deepcopy
+from time import sleep
 from typing import Optional
 
 import numpy
@@ -77,12 +78,8 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
 
             # Eventually overwrites the fixed parameter list if it depends on the model.
             if "green_functions" in function_name:
-                fixed_parameter_list: list = load_base_model(
-                    name="variable_parameter_values",
-                    path=intermediate_result_subpaths["interpolate_love_numbers"].joinpath(
-                        model_id
-                    ),
-                )
+
+                fixed_parameter_list = self.get_variable_parameter_list(model_id=model_id)
 
             for fixed_parameter in fixed_parameter_list:
                 self.processed[(model_id, fixed_parameter)] = {
@@ -91,6 +88,20 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
                 }
                 for variable_parameter in initial_variable_parameter_list:
                     self.to_process.add((model_id, fixed_parameter, variable_parameter))
+
+    def get_variable_parameter_list(self, model_id: str) -> list[float]:
+        """
+        Intermediate function for concurrent I/O.
+        """
+
+        try:
+            return load_base_model(
+                name="variable_parameter_values",
+                path=intermediate_result_subpaths["interpolate_love_numbers"].joinpath(model_id),
+            )
+        except FileNotFoundError:
+            sleep(self.parallel_computing_parameters.timeout)
+            return self.get_variable_parameter_list(model_id=model_id)
 
     def get_results(self) -> None:
         """

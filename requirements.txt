@@ -4,4 +4,4 @@ pydantic
 pyshtools
 scipy
 watchdog
-pyodeint
+pylint

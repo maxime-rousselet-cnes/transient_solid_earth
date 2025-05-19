@@ -112,12 +112,24 @@ def interpolate_on_fixed_parameter(function_name: str, save_path: Path) -> None:
             / n_factor_post_interpolation
         )
 
-    save_complex_array(
-        obj=result, name=INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, path=save_path
-    )
+    # Saves the interpolated values.
+    save_path = save_path.joinpath(INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME)
+    save_complex_array(obj=result, path=save_path)
     save_base_model(
-        obj=input_data["variable_parameter"], name="variable_parameter_values", path=save_path
+        obj=input_data["variable_parameter"],
+        name="variable_parameter_values",
+        path=save_path.parent,
     )
+
+    if "love_numbers" in function_name:
+
+        # Saves separately per period for non-limiting I/O during Green function computing.
+        for period_index, period in enumerate(input_data["variable_parameter"]):
+            save_complex_array(
+                obj=result["real"][:, period_index] + 1.0j * result["imag"][:, period_index],
+                path=save_path,
+                name=str(period),
+            )
 
 
 def interpolate_on_variable_parameter(

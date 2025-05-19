@@ -41,6 +41,8 @@ MILLI_ARC_SECOND_TO_RADIANS = ARC_SECOND_TO_RADIANS / 1000
 # Earth mean radius (m).
 EARTH_RADIUS = 6.371e6
 
+EARTH_MASS = 5.972e24  # (kg).
+
 # Ratio betwenn surface water density and mean Earth density.
 DENSITY_RATIO = 997.0 / 5513.0
 

@@ -12,7 +12,7 @@ from copy import deepcopy
 from functools import partial
 from itertools import islice
 from multiprocessing import cpu_count, get_context
-from typing import Optional
+from typing import Iterable, Optional
 
 from .database import save_base_model
 from .parallel_processing_functions import functions
@@ -21,7 +21,7 @@ from .paths import intermediate_result_subpaths, logs_subpaths, worker_informati
 from .worker_parser import WorkerInformation
 
 
-def chunked(iterable, size):
+def chunked(iterable: Iterable, size: int) -> Iterable:
     """
     Splits an iterable into chunks of a given maximum size.
     """
@@ -242,16 +242,20 @@ class ProcessCatalog:
         with self.i_job_array_lock:
             self.i_job_array += 1
 
-    def wait(self, timeout: float = 0.1) -> None:
+    def wait(self, timeout: Optional[float] = None) -> None:
         """
         Waits for all jobs to finish, or timeout
         """
 
+        if not timeout:
+            timeout = self.parallel_computing_parameters.timeout
         for thread in self.threads:
             if thread.is_alive():
                 thread.join(timeout=timeout)
 
-    def wait_for_jobs(self, subpath_name: Optional[str] = None) -> None:
+    def wait_for_jobs(
+        self, subpath_name: Optional[str] = None, timeout: Optional[float] = None
+    ) -> None:
         """
         Waits for all jobs to finish.
         """
@@ -263,4 +267,4 @@ class ProcessCatalog:
                     path = path.joinpath(subpath_name)
                 if path.exists():
                     self.in_process.pop((model_id, _))
-                    self.wait()
+                    self.wait(timeout=timeout)
