@@ -58,6 +58,10 @@ class SolidEarthModelStructureParameters(BaseModel):
     below_icb_layers: Optional[int] = None  # Should be >= 0.
     # Number of total layers under the Mantle-Core Boundary.
     below_cmb_layers: Optional[int] = None  # Should be >= below_ICB_layers.
+    asymptotic_compressibility: bool = False
+    drho_dx_epsilon: float = (
+        1.0e-10  # Limit under which incompressibility is assumed (for Lithosphere mainly).
+    )
 
 
 DEFAULT_SOLID_EARTH_MODEL_STRUCTURE_PARAMETERS = SolidEarthModelStructureParameters()

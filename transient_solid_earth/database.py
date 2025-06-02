@@ -94,11 +94,17 @@ def save_complex_array(
 def generate_degrees_list(
     degree_thresholds: list[int],
     degree_steps: list[int],
+    n_max: Optional[int] = None,
 ) -> list[int]:
     """
     Generates the list of degrees for which to compute Love numbers, given a list of thresholds and
     a list of steps.
     """
+
+    if n_max:
+        degree_thresholds = [threshold for threshold in degree_thresholds if threshold <= n_max]
+        degree_steps = degree_steps[: len(degree_thresholds) - 1]
+        degree_thresholds += [n_max + degree_steps[-1]]
 
     return numpy.concatenate(
         [

@@ -21,8 +21,8 @@ from transient_solid_earth import (
 )
 
 CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = True
-CLEAR_ASYMPTOTIC = True
+CLEAR_INTERPOLATING = False
+CLEAR_ASYMPTOTIC = False
 CLEAR_GREEN = True
 
 if __name__ == "__main__":
@@ -57,6 +57,7 @@ if __name__ == "__main__":
             fixed_parameter_list=generate_degrees_list(
                 degree_thresholds=parameters.solid_earth.degree_discretization.thresholds,
                 degree_steps=parameters.solid_earth.degree_discretization.steps,
+                n_max=parameters.load.model.signature.n_max,
             ),
             parameters=parameters,
         )

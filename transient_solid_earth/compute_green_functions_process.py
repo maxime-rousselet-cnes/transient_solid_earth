@@ -6,7 +6,6 @@ from os import utime
 from time import sleep
 
 import numpy
-from matplotlib.pyplot import plot, show, title, xscale, yscale
 from numpy.polynomial.legendre import legval
 
 from .constants import EARTH_MASS, EARTH_RADIUS
@@ -122,57 +121,26 @@ def compute_green_functions(worker_information: WorkerInformation) -> None:
 
         degrees = numpy.arange(len(love_numbers)) + 1
         theta = numpy.pi / 180.0 * worker_information.variable_parameter
-        c = numpy.concatenate(
-            (
-                [[0.0, 0.0, 0.0]],
-                (
-                    love_numbers[:, :, 0]
-                    - asymptotic_love_numbers_order_0[:, 0][None, :]
-                    - asymptotic_love_numbers_order_1[:, 0][None, :] / degrees[:, None]
-                ),
-            )
-        )
-        a = legval(x=numpy.cos(theta), c=c)
+
         u = (
             EARTH_RADIUS
             / EARTH_MASS
             * (
                 asymptotic_love_numbers_order_0[:, 0]
                 * legendre_polynomials_sum_order_0(theta=theta)
-                + asymptotic_love_numbers_order_1[:, 0]
+                + asymptotic_love_numbers_order_1[:, 1]
                 * legendre_polynomials_sum_order_1(theta=theta)
-                + numpy.sum(
-                    a=a,
-                    axis=0,
+                + legval(
+                    x=numpy.cos(theta),
+                    c=numpy.concatenate(
+                        (
+                            [[0.0, 0.0, 0.0]],
+                            love_numbers[:, :, 0]
+                            - asymptotic_love_numbers_order_0[:, 0][None, :]
+                            - asymptotic_love_numbers_order_1[:, 0][None, :] / degrees[:, None],
+                        )
+                    ),
                 )
             )
         )
         save_complex_array(obj=numpy.concatenate(([u],)), path=save_path)
-        # TODO.
-        """
-        v = (
-            EARTH_RADIUS
-            / EARTH_MASS
-            * (
-                asymptotic_love_numbers_order_0[:, 1]
-                * legendre_polynomial_derivatives_sum_order_1(theta=theta)
-                + asymptotic_love_numbers_order_1[:, 1]
-                * legendre_polynomial_derivatives_sum_order_2(theta=theta)
-                + numpy.sum(
-                    a=(
-                        love_numbers[:, :, 1] * degrees[:, None]
-                        - asymptotic_love_numbers_order_0[:, 1][None, :]
-                        - asymptotic_love_numbers_order_1[:, 1][None, :] / degrees[:, None]
-                    )
-                    * legendre_lm(
-                        # Equivalent to d/dtheta(P_n(cos(theta))).
-                        l=degrees,
-                        m=1,
-                        z=numpy.cos(theta),
-                    )[:, None],
-                    axis=0,
-                )
-            )
-        )
-        save_complex_array(obj=numpy.concatenate(([u], [v])), path=save_path)
-        """

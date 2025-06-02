@@ -11,7 +11,9 @@
             "structure_parameters": {
                 "dynamic_term": true,
                 "below_icb_layers": null,
-                "below_cmb_layers": null
+                "below_cmb_layers": null,
+                "asymptotic_compressibility": false,
+                "drho_dx_epsilon": 1.0e-10
             }
         },
         "degree_discretization": {
@@ -38,7 +40,7 @@
                 2000,
                 6000,
                 10000,
-                100000
+                100001
             ]
         },
         "numerical_parameters": {
@@ -49,9 +51,9 @@
                 "minimal_radius": 1.0e3,
                 "atol": 1.0e-14,
                 "rtol": 1.0e-7,
-                "n_min_for_asymptotic_behavior": 5000
+                "n_min_for_asymptotic_behavior": 10000
             },
-            "n_max_green": 2000
+            "n_max_green": 100000
         },
         "options": {
             "compute_green": true,
@@ -128,7 +130,7 @@
             },
             "signature": {
                 "opposite_load_on_continents": false,
-                "n_max": 88,
+                "n_max": 89,
                 "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
             },
             "options": {

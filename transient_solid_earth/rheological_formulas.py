@@ -47,6 +47,22 @@ def g_0_computing(
     return g_0
 
 
+def p_0_computing(
+    x: numpy.ndarray, rho_0: numpy.ndarray, g_0: numpy.ndarray, p_0_inf: float, spline_number: int
+) -> numpy.ndarray:
+    """
+    Integrates the static equation to get P(x).
+    """
+
+    # Trapezoidal rule integral method for P = C^te - integral(rho_0 g dz).
+    dz = numpy.diff(x)
+    mean_rho_g = numpy.convolve(a=rho_0 * g_0, v=[0.5, 0.5])[1:-1]
+    dp_0 = numpy.zeros(shape=spline_number)
+    dp_0[0] = p_0_inf
+    dp_0[1:] = -mean_rho_g * dz
+    return numpy.cumsum(dp_0)
+
+
 def mu_k_computing(mu_k1: numpy.ndarray, c: numpy.ndarray, mu_0: numpy.ndarray) -> numpy.ndarray:
     """
     Computes Kelvin's equivalent elastic modulus given the parameters mu_k1, c, and real elastic
