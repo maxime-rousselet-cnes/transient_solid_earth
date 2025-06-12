@@ -41,10 +41,12 @@ def get_time_dependent_components(
     barystatic_load_model_dates, barystatic_load_model = load_barystatic_load_model(
         load_model_parameters=load_model_parameters
     )
-    full_dates, anti_symmetric_load_model, past_trend, _ = generate_anti_symmetric_signal_model(
-        load_model_parameters=load_model_parameters,
-        dates=barystatic_load_model_dates,
-        signal=barystatic_load_model,
+    full_dates, anti_symmetric_load_model, past_trend, recent_trend = (
+        generate_anti_symmetric_signal_model(
+            load_model_parameters=load_model_parameters,
+            dates=barystatic_load_model_dates,
+            signal=barystatic_load_model,
+        )
     )
     (
         past_trend_indices,
@@ -60,7 +62,7 @@ def get_time_dependent_components(
     return (
         periods,
         full_load_model_dates,
-        time_dependent_component,
+        time_dependent_component / recent_trend,  # (yr) := (mm) / (mm/yr).
         past_trend,
         past_trend_indices,
         recent_trend_indices,

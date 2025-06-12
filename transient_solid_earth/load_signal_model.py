@@ -82,6 +82,7 @@ class ElasticLoadModelBaseProducts(BaseModel):
         ElasticLoadModelTemporalProducts()
     )
     load_model_harmonic_component: numpy.ndarray | list = numpy.zeros(shape=())
+    # (yr) := (mm) / (mm/yr).
     time_dependent_component: numpy.ndarray | list = numpy.zeros(shape=())
 
     @dataclasses.dataclass

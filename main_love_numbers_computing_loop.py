@@ -32,7 +32,7 @@ from transient_solid_earth import (
 CLEAR = {
     "love_numbers": False,
     "generate_elastic_load_models": False,
-    "interpolate_love_numbers": True,
+    "interpolate_love_numbers": False,
 }
 CLEAR_TABLES = CLEAR["generate_elastic_load_models"]
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
             for elastic_load_model_id in elastic_load_model_ids:
 
-                elastic_load_model = elastic_load_models[elastic_model_id]
+                elastic_load_model = elastic_load_models[elastic_load_model_id]
                 elastic_polar_tide_correction_back(
                     elastic_load_model=elastic_load_model, elastic_love_numbers=elastic_love_numbers
                 )

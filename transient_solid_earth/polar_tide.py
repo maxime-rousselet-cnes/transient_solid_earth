@@ -25,13 +25,13 @@ def polar_motion_correction(
     # Gets element in position 1 for degree 2. Solid Earth (SE) Polar Tide (PT).
     phi_se_pt_complex: numpy.ndarray[complex] = (
         -PHI_CONSTANT
-        * love_numbers[1, :, BoundaryCondition.POETENTIAL, Direction.POTENTIAL]
+        * love_numbers[1, :, BoundaryCondition.POETENTIAL.value, Direction.POTENTIAL.value]
         * (frequencial_m1 - 1.0j * frequencial_m2)
     )
 
     # C_PT_SE_2_1, S_PT_SE_2_1.
     stokes_to_ewh_factor = STOKES_TO_EWH_CONSTANT / (
-        1.0 + love_numbers[1, :, BoundaryCondition.LOAD, Direction.POTENTIAL]
+        1.0 + love_numbers[1, :, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
     )  # Divides by 1 + k'.
 
     coherent_polar_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=complex)
@@ -49,7 +49,11 @@ def get_trend_from_complex_signal(
     Gets the trend from a Fourier transformed signal.
     """
 
-    return trend(trend_dates=dates[trend_indices], signal=ifft(signal)[trend_indices])
+    result, _ = trend(
+        trend_dates=dates[trend_indices],
+        signal=numpy.array(object=ifft(signal)).real[trend_indices],
+    )
+    return result
 
 
 def elastic_polar_tide_correction_back(
