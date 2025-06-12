@@ -3,12 +3,15 @@ RAM to file conversions.
 """
 
 import json
+from csv import DictWriter
 from pathlib import Path
 from time import sleep
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import numpy
 from pydantic import BaseModel
+
+from .paths import tables_path
 
 
 class JSONSerialize(json.JSONEncoder):
@@ -103,8 +106,8 @@ def generate_degrees_list(
 
     if n_max:
         degree_thresholds = [threshold for threshold in degree_thresholds if threshold <= n_max]
-        degree_steps = degree_steps[: len(degree_thresholds) - 1]
         degree_thresholds += [n_max + degree_steps[-1]]
+        degree_steps = degree_steps[: len(degree_thresholds) - 1]
 
     return numpy.concatenate(
         [
@@ -112,3 +115,53 @@ def generate_degrees_list(
             for i, degree_step in enumerate(degree_steps)
         ],
     ).tolist()
+
+
+def extract_terminal_attributes(obj: Any, prefix: str = "") -> Union[dict, Any]:
+    """
+    Recursively extracts terminal attributes from a nested object structure,
+    preserving the attribute path as keys in the result dictionary.
+    Terminal attributes are those that do not have a __dict__ or are not collections of objects.
+    """
+
+    if isinstance(obj, (list, tuple)):
+        # Handle sequences by extracting each element with the same prefix
+        result = {}
+        for i, item in enumerate(obj):
+            nested = extract_terminal_attributes(item, f"{prefix}{i}:" if prefix else f"{i}:")
+            if isinstance(nested, dict):
+                result.update(nested)
+        return result
+
+    if hasattr(obj, "__dict__"):
+        result = {}
+        attributes: dict = vars(obj)
+
+        for attr, value in attributes.items():
+            full_key = f"{prefix}{attr}" if not prefix else f"{prefix}:{attr}"
+            if hasattr(value, "__dict__") or isinstance(value, (list, tuple)):
+                nested = extract_terminal_attributes(value, full_key)
+                if isinstance(nested, dict):
+                    result.update(nested)
+            else:
+                result[full_key] = value
+        return result
+
+    return obj
+
+
+def add_result_to_table(table_name: str, dictionary: dict[str, str | bool | float]) -> None:
+    """
+    Adds a line to the wanted result table with a result informations and filename.
+    """
+
+    table_filepath = tables_path.joinpath(table_name + ".csv")
+    tables_path.mkdir(exist_ok=True, parents=True)
+    write = not table_filepath.exists()
+
+    # Adds a line to the table (whether it exists or not)..
+    with open(file=table_filepath, mode="a+", encoding="utf-8", newline="") as file:
+        writer = DictWriter(file, dictionary.keys())
+        if write:
+            writer.writeheader()
+        writer.writerow(dictionary)

@@ -21,9 +21,9 @@ data_path = Path("data")
 
 ## Inputs.
 inputs_path = data_path.joinpath("inputs")
+grace_data_path = data_path.joinpath("grace")
 
 ### Input data.
-grace_data_path = inputs_path.joinpath("grace")
 gmsl_data_path = inputs_path.joinpath("gmsl_data")
 pole_data_path = inputs_path.joinpath("pole_data")
 masks_data_path = inputs_path.joinpath("masks")
@@ -58,34 +58,30 @@ love_numbers_path = outputs_path.joinpath("love_numbers")
 loads_path = outputs_path.joinpath("loads")
 
 #### Input load signal numerical models.
-input_load_signal_models_path = loads_path.joinpath("input_load_signal_models")
+elastic_load_models_path = loads_path.joinpath("elastic_load_models_path")
 
 #### Output load signal trends.
-output_load_signal_trends_path = loads_path.joinpath("output_load_signal_trends")
-
-##### Degree one inversion components.
-harmonic_geoid_trends_path = output_load_signal_trends_path.joinpath("geoid_terms")
-harmonic_radial_displacement_trends_path = output_load_signal_trends_path.joinpath(
-    "radial_displacement_terms"
-)
-harmonic_residual_trends_path = output_load_signal_trends_path.joinpath("residuals")
+anelastic_load_model_trends_path = loads_path.joinpath("anelastic_load_model_trends_path")
 
 ##### Anelastic load signals.
-anelastic_load_signals_path = output_load_signal_trends_path.joinpath("load_signal_trends")
+anelastic_pole_motion_path = anelastic_load_model_trends_path.joinpath("pole_motions")
+
+##### Degree one inversion components.
+harmonic_geoid_trends_path = anelastic_load_model_trends_path.joinpath("geoids")
+harmonic_radial_displacement_trends_path = anelastic_load_model_trends_path.joinpath(
+    "radial_displacements"
+)
+harmonic_residual_trends_path = anelastic_load_model_trends_path.joinpath("residuals")
+
+##### Anelastic load signals.
+anelastic_load_signals_path = anelastic_load_model_trends_path.joinpath("load_models")
 
 ### SLURM logs.
 logs_path = outputs_path.joinpath("logs")
 
 #### Love numbers job array logs.
-sub_paths = ["test_models", "love_numbers", "green_functions"]
-logs_subpaths = (
-    {sub_path: logs_path.joinpath(sub_path) for sub_path in sub_paths}
-    | {
-        "interpolate_" + sub_path: logs_path.joinpath("interpolate_" + sub_path)
-        for sub_path in sub_paths
-    }
-    | {"asymptotic_love_numbers": logs_path.joinpath("asymptotic_love_numbers")}
-)
+sub_paths = ["love_numbers", "interpolate_love_numbers", "generate_elastic_load_models"]
+logs_subpaths = {sub_path: logs_path.joinpath(sub_path) for sub_path in sub_paths}
 
 
 #### Intermediate preprocessing/post-processing results.
@@ -100,7 +96,9 @@ intermediate_result_subpaths = {
     for sub_path, log_subpath in logs_subpaths.items()
 }
 
-INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME = "interpolated_on_fixed_parameter"
+elastic_load_model_parameters_subpath = intermediate_result_subpaths[
+    "generate_elastic_load_models"
+].joinpath("parameters")
 
 
 def get_love_numbers_subpath(model_id: str, n: int, period: float) -> Path:
@@ -112,4 +110,16 @@ def get_love_numbers_subpath(model_id: str, n: int, period: float) -> Path:
         .joinpath(model_id)
         .joinpath(str(n))
         .joinpath(str(period))
+    )
+
+
+def interpolated_love_numbers_path(periods_id: str, rheological_model_id: str) -> Path:
+    """
+    Gets the path for Love numbers of a given rheological model interpolated on given periods.
+    """
+
+    return (
+        intermediate_result_subpaths["interpolate_love_numbers"]
+        .joinpath(periods_id)
+        .joinpath(rheological_model_id)
     )

@@ -11,7 +11,7 @@ from .solid_earth_time_dependent_numerical_model import SolidEarthTimeDependentN
 from .worker_parser import WorkerInformation
 
 
-def compute_love_numbers(worker_information: WorkerInformation) -> None:
+def worker_compute_love_numbers(worker_information: WorkerInformation) -> None:
     """
     Love number integration function for a given rheology, degree and period.
     """

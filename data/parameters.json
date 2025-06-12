@@ -20,27 +20,13 @@
             "steps": [
                 1,
                 2,
-                5,
-                10,
-                50,
-                100,
-                200,
-                500,
-                1000,
-                10000
+                5
             ],
             "thresholds": [
                 1,
                 20,
                 40,
-                100,
-                200,
-                400,
-                1000,
-                2000,
-                6000,
-                10000,
-                100001
+                100
             ]
         },
         "numerical_parameters": {
@@ -50,13 +36,10 @@
                 "high_degrees_radius_sensibility": 1.0e-4,
                 "minimal_radius": 1.0e3,
                 "atol": 1.0e-14,
-                "rtol": 1.0e-7,
-                "n_min_for_asymptotic_behavior": 10000
-            },
-            "n_max_green": 100000
+                "rtol": 1.0e-7
+            }
         },
         "options": {
-            "compute_green": true,
             "model_id": null,
             "save": true,
             "overwrite_model": false
@@ -88,9 +71,9 @@
                 "leakage_correction_iterations": 1,
                 "renormalize_recent_trend": true,
                 "initial_past_trend_factor": 1.22,
-                "anti_Gibbs_effect_factor": 0,
+                "anti_Gibbs_effect_factor": 1,
                 "spline_time_years": 50,
-                "initial_plateau_time_years": 2000,
+                "initial_plateau_date": -1000,
                 "signal_threshold": 12.0,
                 "signal_threshold_past": 6.0,
                 "mean_signal_threshold": null,
@@ -99,12 +82,14 @@
                 "ocean_mask": "IMERG_land_sea_mask.nc",
                 "continents": "geopandas-continents.zip",
                 "buffer_distance": 300,
-                "first_year_for_trend": 2003,
-                "last_year_for_trend": 2022,
+                "first_year_for_recent_trend": 2003,
+                "last_year_for_recent_trend": 2023,
+                "first_year_for_past_trend": 1900,
+                "last_year_for_past_trend": 2003,
                 "past_trend_error": 1e-3
             },
             "history": {
-                "file": "Frederikse/global_basin_timeseries.csv",
+                "file": "global_basin_timeseries.csv",
                 "start_date": 1900,
                 "case": "mean",
                 "pole": {
@@ -116,8 +101,6 @@
                     "pole_secular_term_trend_end_date": 1978,
                     "ramp": false,
                     "filter_wobble": true,
-                    "phi_constant": true,
-                    "remove_pole_secular_trend": false,
                     "remove_mean_pole": true,
                     "wobble_filtering_kernel_length": 50
                 },
@@ -135,8 +118,7 @@
             },
             "options": {
                 "compute_residuals": false,
-                "invert_for_J2": false,
-                "compute_displacements": true
+                "invert_for_J2": false
             }
         }
     },
@@ -188,7 +170,7 @@
                 false,
                 true
             ],
-            "load_spatial_behaviour_file": [
+            "file": [
                 "GFZ",
                 "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
             ]
@@ -204,26 +186,6 @@
         "love_numbers": {
             "value_min": 1.0e-2,
             "value_max": 1.0e5,
-            "n_0": 3,
-            "maximum_tolerance": 5.0e-3,
-            "precision": 1.0e-4,
-            "exponentiation_base": 10.0,
-            "round": 10,
-            "min_step": 1.2
-        },
-        "test_models": {
-            "value_min": 1.0e-2,
-            "value_max": 1.0e2,
-            "n_0": 3,
-            "maximum_tolerance": 5.0e-3,
-            "precision": 1.0e-4,
-            "exponentiation_base": 10.0,
-            "round": 10,
-            "min_step": 1.2
-        },
-        "green_functions": {
-            "value_min": 1.0e-5,
-            "value_max": 179.5,
             "n_0": 3,
             "maximum_tolerance": 5.0e-3,
             "precision": 1.0e-4,

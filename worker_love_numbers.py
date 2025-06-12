@@ -2,7 +2,9 @@
 Defines a job for Love numbers computing.
 """
 
-from transient_solid_earth import compute_love_numbers, parse_worker_information
+from transient_solid_earth import parse_worker_information, worker_compute_love_numbers
 
 if __name__ == "__main__":
-    compute_love_numbers(worker_information=parse_worker_information(function_name="love_numbers"))
+    worker_compute_love_numbers(
+        worker_information=parse_worker_information(function_name="love_numbers")
+    )

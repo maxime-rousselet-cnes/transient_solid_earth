@@ -10,7 +10,7 @@ import numpy
 from .database import save_base_model
 from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import DEFAULT_PARAMETERS, Parameters
-from .paths import INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME, intermediate_result_subpaths
+from .paths import intermediate_result_subpaths
 from .process_catalog import ProcessCatalog
 
 
@@ -21,71 +21,71 @@ class InterpolateProcessCatalog(ProcessCatalog):
 
     def __init__(
         self,
-        function_name: str,
         rheologies: list[dict],
         parameters: Parameters,
-        fixed_parameter_new_values: Optional[list[float] | numpy.ndarray] = None,
+        period_new_values_per_id: dict[str, list[float] | numpy.ndarray],
+        degree_new_values: list[float] | numpy.ndarray,
     ) -> None:
         """
-        Generates the rheologies and saves the numerical models. Memorizes the IDs.
+        Memorizes the IDs of the models to interpolate. Saves the peroid/degree grid.
         """
 
-        interpolate_function_name = "interpolate_" + function_name
         super().__init__(
-            function_name=interpolate_function_name,
+            function_name="interpolate_love_numbers",
             parallel_computing_parameters=parameters.parallel_computing,
         )
 
-        for rheology in rheologies:
-            self.to_process.add(
-                (
-                    MODEL_TYPE_NAMES[interpolate_function_name](
-                        solid_earth_parameters=deepcopy(parameters.solid_earth),
-                        rheology=rheology,
-                    ).model_id,
-                    parameters.discretization[function_name].exponentiation_base,
-                    1.0 if fixed_parameter_new_values else 0.0,
-                )
+        save_base_model(
+            obj=degree_new_values,
+            name="degrees",
+            path=intermediate_result_subpaths["interpolate_love_numbers"],
+        )
+
+        for interpolation_basis_id, period_new_values in period_new_values_per_id.items():
+
+            save_base_model(
+                obj=period_new_values,
+                name="periods",
+                path=intermediate_result_subpaths["interpolate_love_numbers"].joinpath(
+                    interpolation_basis_id
+                ),
             )
 
-        if fixed_parameter_new_values:
-            save_base_model(
-                obj=fixed_parameter_new_values,
-                name="fixed_parameter_new_values",
-                path=intermediate_result_subpaths[interpolate_function_name],
-            )
+            for rheology in rheologies:
+                self.to_process.add(
+                    (
+                        MODEL_TYPE_NAMES["interpolate_love_numbers"](
+                            solid_earth_parameters=deepcopy(parameters.solid_earth),
+                            rheology=rheology,
+                        ).model_id,
+                        # To interpolate on periods in log scale.
+                        parameters.discretization["love_numbers"].exponentiation_base,
+                        interpolation_basis_id,
+                    )
+                )
 
 
 def interpolate_parallel_computing_loop(
-    function_name: str,
     rheologies: list[dict],
+    period_new_values_per_id: dict[str, list[float] | numpy.ndarray],
+    degree_new_values: list[float] | numpy.ndarray,
     parameters: Parameters = DEFAULT_PARAMETERS,
-    fixed_parameter_new_values: Optional[list[float] | numpy.ndarray] = None,
     timeout: Optional[float] = None,
 ) -> None:
     """
-    For every rheologies, interpolates on the chosen axis.
-    Interpolates on the fixed parameter axis and creates a grid instance if
-    'fixed_parameter_new_values' parameter is specified.
-    Interpolates on the variable parameter axis on shared values if 'fixed_parameter_new_values'
-    is not specified.
+    For every rheologies, interpolates Love numbers.
     """
 
     # Initializes data structures.
     process_catalog = InterpolateProcessCatalog(
-        function_name=function_name,
         rheologies=rheologies,
         parameters=parameters,
-        fixed_parameter_new_values=fixed_parameter_new_values,
+        period_new_values_per_id=period_new_values_per_id,
+        degree_new_values=degree_new_values,
     )
 
     # Runs a job per rheology and per fixed parameter.
     process_catalog.schedule_jobs()
 
     # Waits for the jobs to finish.
-    process_catalog.wait_for_jobs(
-        subpath_name=(
-            INTERPOLATED_ON_FIXED_PARAMETER_SUBPATH_NAME if fixed_parameter_new_values else None
-        ),
-        timeout=timeout,
-    )
+    process_catalog.wait_for_jobs(timeout=timeout)

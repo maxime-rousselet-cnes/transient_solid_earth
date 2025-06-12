@@ -5,3 +5,5 @@ pyshtools
 scipy
 watchdog
 pylint
+geopandas
+shapely

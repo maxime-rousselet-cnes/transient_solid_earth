@@ -9,7 +9,7 @@ from numpy import array, inf, ndarray
 
 from .constants import DEFAULT_MODELS
 from .database import load_base_model, save_base_model
-from .model import Model
+from .generic_rheology_model import Model
 from .model_layer import ModelLayer
 from .parameters import SolidEarthParameters
 from .paths import (

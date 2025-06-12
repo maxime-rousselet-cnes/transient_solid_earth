@@ -4,9 +4,8 @@ The variables of this preprocessed class are still independent on frequency.
 """
 
 import dataclasses
-from typing import Optional
+from typing import Optional, TypeVar
 
-from .model import Model
 from .parameters import DEFAULT_SOLID_EARTH_PARAMETERS, SolidEarthParameters
 from .paths import SolidEarthModelPart
 from .separators import (
@@ -15,11 +14,23 @@ from .separators import (
 )
 
 
+@dataclasses.dataclass
+class Model:
+    """
+    Abstract class for every model to have an ID.
+    """
+
+    model_id: Optional[str]
+
+
+MODEL = TypeVar("MODEL", bound=Model)
+
+
 def solid_earth_full_numerical_model_id_from_part_names(
     elasticity_name: str, long_term_anelasticity_name: str, short_term_anelasticity_name: str
 ) -> str:
     """
-    Builds an id for a solid Earth full numerical model given the names of its components.
+    Builds an ID for a solid Earth full numerical model given the names of its components.
     """
 
     return SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR.join(

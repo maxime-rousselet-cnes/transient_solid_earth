@@ -2,83 +2,171 @@
 Needed classes to describe a load signal.
 """
 
+import dataclasses
 from pathlib import Path
+from typing import Optional
 
 import numpy
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
-from .database import load_base_model
-from .parameters import DEFAULT_LOAD_PARAMETERS, DEFAULT_PARAMETERS, LoadParameters, Parameters
-from .paths import input_load_signal_models_path, output_load_signal_trends_path
+from .database import load_base_model, save_base_model
+from .parameters import DEFAULT_LOAD_MODEL_PARAMETERS, LoadModelParameters
+from .paths import elastic_load_models_path
 
 
-class InputLoadSignalModel(BaseModel):
+class ElasticLoadModelSpatialProducts(BaseModel):
     """
-    Defines a preprocessed load signal, ready for anelastic re-estimation.
-    """
-
-    dates: numpy.ndarray[float] = numpy.zeros(shape=())
-    frequencies: numpy.ndarray[float] = numpy.zeros(shape=())
-    signal: numpy.ndarray[float] = numpy.zeros(shape=())
-    load_parameters: LoadParameters = DEFAULT_LOAD_PARAMETERS
-
-    def __init_subclass__(cls, **kwargs):
-        return super().__init_subclass__(**kwargs)
-
-    def __init__(
-        self,
-        dates: list[float] | numpy.ndarray[float],
-        frequencies: list[float] | numpy.ndarray[float],
-        signal: list[list[list[float]]] | numpy.ndarray[float],
-        load_parameters: LoadParameters,
-    ) -> None:
-
-        super().__init__()
-
-        self.dates = numpy.array(object=dates)
-        self.frequencies = numpy.array(object=frequencies)
-        self.signal = numpy.array(object=signal)
-        self.load_parameters = load_parameters
-
-
-class OutputLoadSignalTrend(BaseModel):
-    """
-    Defines a re-estimated signal's trend and the parameters that where needed for its processing.
+    Spatial products of an elastic load model, needed for anelastic re-estimation.
     """
 
-    parameters: Parameters = DEFAULT_PARAMETERS
-    trend: list[list[float]] | numpy.ndarray[float] = numpy.zeros(shape=())
+    latitudes: numpy.ndarray | list = numpy.zeros(shape=())
+    longitudes: Optional[numpy.ndarray | list] = None
+    ocean_land_mask: numpy.ndarray | list = numpy.zeros(shape=())
+    ocean_land_buffered_mask: numpy.ndarray | list = numpy.zeros(shape=())
 
-    def __init_subclass__(cls, **kwargs):
-        return super().__init_subclass__(**kwargs)
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
 
-    def __init__(
-        self,
-        parameters: Parameters,
-        trend: list[list[float]] | numpy.ndarray[float],
-    ):
+        arbitrary_types_allowed = True
 
-        super().__init__()
+    @model_validator(mode="after")
+    def validate_arrays(self):
+        """
+        To authorize reccursion.
+        """
 
-        self.parameters = parameters
-        self.trend = numpy.array(object=trend)
+        self.latitudes = numpy.array(self.latitudes)
+        self.longitudes = None if self.longitudes is None else numpy.array(self.longitudes)
+        self.ocean_land_mask = numpy.array(self.ocean_land_mask)
+        self.ocean_land_buffered_mask = numpy.array(self.ocean_land_buffered_mask)
+        return self
 
 
-def load_input_load_signal_model(
-    name: str, path: Path = input_load_signal_models_path
-) -> InputLoadSignalModel:
+class ElasticLoadModelTemporalProducts(BaseModel):
     """
-    Gets a preprocessed input load signal model from (.JSON) file.
-    """
-
-    return load_base_model(name=name, path=path, base_model_type=InputLoadSignalModel)
-
-
-def load_output_load_signal_trend(
-    name: str, path: Path = output_load_signal_trends_path
-) -> OutputLoadSignalTrend:
-    """
-    Gets a processed output load signal trend from (.JSON) file.
+    Temporal products of an elastic load model, needed for anelastic re-estimation.
     """
 
-    return load_base_model(name=name, path=path, base_model_type=InputLoadSignalModel)
+    full_load_model_dates: numpy.ndarray | list = numpy.zeros(shape=())
+    target_past_trend: float = 0.0
+    periods: numpy.ndarray | list = numpy.zeros(shape=())
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
+
+    @model_validator(mode="after")
+    def validate_arrays(self):
+        """
+        To authorize reccursion.
+        """
+
+        self.full_load_model_dates = numpy.array(self.full_load_model_dates)
+        self.periods = numpy.array(self.periods)
+        return self
+
+
+class ElasticLoadModelBaseProducts(BaseModel):
+    """
+    Base products of an elastic load model, needed for anelastic re-estimation.
+    """
+
+    elastic_load_model_temporal_products: ElasticLoadModelTemporalProducts = (
+        ElasticLoadModelTemporalProducts()
+    )
+    load_model_harmonic_component: numpy.ndarray | list = numpy.zeros(shape=())
+    time_dependent_component: numpy.ndarray | list = numpy.zeros(shape=())
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
+
+    @model_validator(mode="after")
+    def validate_arrays(self):
+        """
+        To authorize reccursion.
+        """
+
+        self.load_model_harmonic_component = numpy.array(self.load_model_harmonic_component)
+        self.time_dependent_component = numpy.array(self.time_dependent_component)
+        return self
+
+
+class ElasticLoadModelSideProducts(BaseModel):
+    """
+    Side products of an elastic load model, needed for anelastic re-estimation.
+    """
+
+    past_trend_indices: numpy.ndarray | list = numpy.zeros(shape=())
+    recent_trend_indices: numpy.ndarray | list = numpy.zeros(shape=())
+    time_dependent_m_1: numpy.ndarray | list = numpy.zeros(shape=())
+    time_dependent_m_2: numpy.ndarray | list = numpy.zeros(shape=())
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
+
+    @model_validator(mode="after")
+    def validate_arrays(self):
+        """
+        To authorize reccursion.
+        """
+
+        self.past_trend_indices = numpy.array(self.past_trend_indices)
+        self.recent_trend_indices = numpy.array(self.recent_trend_indices)
+        self.time_dependent_m_1 = numpy.array(self.time_dependent_m_1)
+        self.time_dependent_m_2 = numpy.array(self.time_dependent_m_2)
+        return self
+
+
+class ElasticLoadModel(BaseModel):
+    """
+    Defines a preprocessed elastic load, ready for anelastic re-estimation.
+    """
+
+    elastic_load_model_spatial_products: ElasticLoadModelSpatialProducts = (
+        ElasticLoadModelSpatialProducts()
+    )
+    elastic_load_model_base_products: ElasticLoadModelBaseProducts = ElasticLoadModelBaseProducts()
+    elastic_load_model_side_products: ElasticLoadModelSideProducts = ElasticLoadModelSideProducts()
+    load_model_parameters: LoadModelParameters = DEFAULT_LOAD_MODEL_PARAMETERS
+
+    @dataclasses.dataclass
+    class Config:
+        """
+        To authorize arrays.
+        """
+
+        arbitrary_types_allowed = True
+
+    def save(self, path: Path = elastic_load_models_path) -> None:
+        """
+        Saves a preprocessed elastic load model in a (.JSON) file.
+        """
+
+        save_base_model(obj=self, name=self.load_model_parameters.model_id(), path=path)
+
+
+def load_elastic_load_model(
+    model_id: str, path: Path = elastic_load_models_path
+) -> ElasticLoadModel:
+    """
+    Gets a preprocessed elastic load model from (.JSON) file.
+    """
+
+    return ElasticLoadModel.model_validate(load_base_model(name=model_id, path=path))

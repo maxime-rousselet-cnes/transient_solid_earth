@@ -1,95 +1,143 @@
 """
-Main call for Love numbers computing loop on rheologies.
+Main to call for:
+I   - Elastic load model preprocessings.
+II  - Love number computing for all rheological models.
+III - Self-coherent anelastic load re-estimation for all elastic loads and rheological models.
 """
 
 import os
 import shutil
-from time import time
+from pathlib import Path
 
 import numpy
 
 from transient_solid_earth import (
     SolidEarthModelPart,
     adaptative_step_parallel_computing_loop,
-    asymptotic_degree_value,
-    asymptotic_love_numbers_computing_loop,
+    anelastic_load_model_re_estimation_processing_loop,
     create_all_model_variations,
+    elastic_load_models_path,
+    elastic_polar_tide_correction_back,
     generate_degrees_list,
+    generate_elastic_load_models_parallel_loop,
+    get_period_interpolation_basis,
     interpolate_parallel_computing_loop,
+    interpolated_love_numbers_path,
+    load_complex_array,
     load_parameters,
     logs_subpaths,
+    tables_path,
 )
 
-CLEAR_COMPUTING = False
-CLEAR_INTERPOLATING = False
-CLEAR_ASYMPTOTIC = False
-CLEAR_GREEN = True
+CLEAR = {
+    "love_numbers": False,
+    "generate_elastic_load_models": False,
+    "interpolate_love_numbers": True,
+}
+CLEAR_TABLES = CLEAR["generate_elastic_load_models"]
+
+
+def clear_path(path: Path) -> None:
+    """
+    Clears the given path if it exists.
+    """
+
+    if path.exists():
+        shutil.rmtree(path)
+
 
 if __name__ == "__main__":
 
-    # Clears.
-    if CLEAR_COMPUTING and logs_subpaths["love_numbers"].exists():
-        shutil.rmtree(logs_subpaths["love_numbers"])
-    if CLEAR_INTERPOLATING and logs_subpaths["interpolate_love_numbers"].exists():
-        shutil.rmtree(logs_subpaths["interpolate_love_numbers"])
-    if CLEAR_ASYMPTOTIC and logs_subpaths["asymptotic_love_numbers"].exists():
-        shutil.rmtree(logs_subpaths["asymptotic_love_numbers"])
-    if CLEAR_GREEN and logs_subpaths["green_functions"].exists():
-        shutil.rmtree(logs_subpaths["green_functions"])
+    # Eventually clears the directories.
+    for path_to_clear, to_clear in CLEAR.items():
+        if to_clear and logs_subpaths[path_to_clear].exists():
+            clear_path(path=logs_subpaths[path_to_clear])
+    if CLEAR_TABLES:
+        clear_path(path=tables_path)
+        if CLEAR["generate_elastic_load_models"]:
+            clear_path(path=elastic_load_models_path)
 
-    # Initializes.
+    # Loads parameters and rheological models.
     parameters = load_parameters()
+    rheological_models: list[
+        tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]
+    ] = create_all_model_variations(variable_parameters=parameters.solid_earth_variabilities)
 
-    models: list[tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]] = (
-        create_all_model_variations(variable_parameters=parameters.solid_earth_variabilities)
+    # Preprocesses the elastic load models.
+    generate_elastic_load_models_parallel_loop(parameters=parameters)
+    (
+        period_new_values_per_id,
+        interpolation_basis_ids,
+        elastic_load_models,
+        interpolation_timeout,
+        load_model_ids_per_interpolation_basis_ids,
+    ) = get_period_interpolation_basis(parameters=parameters)
+
+    # Pre/Post-interpolation degrees for Love numbers.
+    degree_new_values = numpy.arange(start=1, stop=parameters.load.model.signature.n_max)
+    degree_list = generate_degrees_list(
+        degree_thresholds=parameters.solid_earth.degree_discretization.thresholds,
+        degree_steps=parameters.solid_earth.degree_discretization.steps,
+        n_max=parameters.load.model.signature.n_max,
     )
 
-    for elastic_model, anelastic_models in models:
+    # Loops on elastic rheologies. Usually, PREM only.
+    for elastic_model, anelastic_models in rheological_models:
 
-        rheologies = [elastic_model]  # + anelastic_models
+        rheologies = [elastic_model] + anelastic_models
 
-        t_0 = time()
-
-        # Processes.
-        adaptative_step_parallel_computing_loop(
+        # Processes all Love numbers.
+        rheological_model_ids, elastic_model_id = adaptative_step_parallel_computing_loop(
             rheologies=rheologies,
-            function_name="love_numbers",
-            fixed_parameter_list=generate_degrees_list(
-                degree_thresholds=parameters.solid_earth.degree_discretization.thresholds,
-                degree_steps=parameters.solid_earth.degree_discretization.steps,
-                n_max=parameters.load.model.signature.n_max,
-            ),
+            degree_list=degree_list,
             parameters=parameters,
         )
 
-        # Interpolates on periods.
+        # Interpolates the Love numbers on adequate periods/degrees for load computing.
         interpolate_parallel_computing_loop(
-            function_name="love_numbers", rheologies=rheologies, parameters=parameters
-        )
-
-        # Interpolates on degrees.
-        interpolate_parallel_computing_loop(
-            function_name="love_numbers",
             rheologies=rheologies,
+            period_new_values_per_id=period_new_values_per_id,
+            # Has to come after periods since n_max is redefined.
+            degree_new_values=degree_new_values,
             parameters=parameters,
-            fixed_parameter_new_values=numpy.arange(
-                start=1,
-                stop=asymptotic_degree_value(parameters=parameters),
-            ).tolist(),
+            timeout=interpolation_timeout,
         )
 
-        # Computes asymptotic Love numbers.
-        asymptotic_love_numbers_computing_loop(rheologies=rheologies, parameters=parameters)
+        # Loops on interpolated elastic load models.
+        for (
+            periods_id,
+            elastic_load_model_ids,
+        ) in load_model_ids_per_interpolation_basis_ids.items():
 
-        # Computes Green functions.
+            # Memorizes elastic Love numbers.
+            elastic_love_numbers = load_complex_array(
+                path=interpolated_love_numbers_path(
+                    periods_id=periods_id, rheological_model_id=elastic_model_id
+                )
+            )
 
-        adaptative_step_parallel_computing_loop(
-            rheologies=rheologies,
-            function_name="green_functions",
-            parameters=parameters,
-        )
+            for elastic_load_model_id in elastic_load_model_ids:
 
-        t_1 = time()
-        print(t_1 - t_0)
+                elastic_load_model = elastic_load_models[elastic_model_id]
+                elastic_polar_tide_correction_back(
+                    elastic_load_model=elastic_load_model, elastic_love_numbers=elastic_love_numbers
+                )
 
+            # Loops on rheological models.
+            for rheological_model_id in rheological_model_ids:
+
+                # Main anelastic self-coherent re-estimation for the given list of elastic load
+                # models.
+                anelastic_load_model_re_estimation_processing_loop(
+                    elastic_load_models=[
+                        elastic_load_model
+                        for elastic_load_model_id, elastic_load_model in elastic_load_models.items()
+                        if elastic_load_model_id in elastic_load_model_ids
+                    ],
+                    elastic_love_numbers=elastic_love_numbers,
+                    periods_id=periods_id,
+                    rheological_model_id=rheological_model_id,
+                )
+
+    # Wait for processes to end naturally.
     os._exit(status=0)

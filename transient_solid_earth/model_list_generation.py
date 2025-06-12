@@ -9,7 +9,7 @@ from typing import Any, Optional
 from .functions import sum_lists
 from .parameters import (
     SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS,
-    LoadNumericalModelParameters,
+    LoadModelParameters,
     SolidEarthModelOptionParameters,
     SolidEarthVariableParameters,
 )
@@ -236,9 +236,9 @@ def set_attr_by_path(obj: Any, path: tuple[str, Any], value: Any):
     setattr(obj, path[-1], value)
 
 
-def generate_object_variants_from_nested_parameters_grid(
-    load_model_parameters: LoadNumericalModelParameters, load_model_variabilities: dict[str, Any]
-) -> list[LoadNumericalModelParameters]:
+def generate_load_model_variations(
+    load_model_parameters: LoadModelParameters, load_model_variabilities: dict[str, Any]
+) -> list[LoadModelParameters]:
     """
     Creates all possible variations of load signal model parameters.
     """

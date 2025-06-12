@@ -186,6 +186,8 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
                 k=self.solid_earth_parameters.numerical_parameters.spline_degree,
             )
 
+        return g_0_inf, p_0_inf
+
     def build(
         self,
         solid_earth_model_part: SolidEarthModelPart,
@@ -239,7 +241,7 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
 
         for i_layer, _ in enumerate(self.model_layers):
 
-            self.build_layer(g_0_inf=g_0_inf, p_0_inf=p_0_inf, i_layer=i_layer)
+            g_0_inf, p_0_inf = self.build_layer(g_0_inf=g_0_inf, p_0_inf=p_0_inf, i_layer=i_layer)
 
         if self.solid_earth_parameters.model.structure_parameters.asymptotic_compressibility:
             ylim(700, 370)

@@ -2,22 +2,16 @@
 Base mathematical functions.
 """
 
-from typing import Optional
-
 import numpy
-from pyshtools import SHCoeffs
-from pyshtools.shclasses import DHRealGrid
-
-from .constants import MASK_DECIMALS
 
 
-def generate_n_factor(fixed_parameter_values: numpy.ndarray) -> numpy.ndarray:
+def generate_n_factor(degrees: numpy.ndarray) -> numpy.ndarray:
     """
     Because nl_n and nk_n are better to interpolate.
     """
 
-    n_factor = numpy.ones(shape=(len(fixed_parameter_values), 1, 1, 3))
-    n_factor[:, :, :, 1] = numpy.array(object=fixed_parameter_values)[:, None, None]
+    n_factor = numpy.ones(shape=(len(degrees), 1, 1, 3))
+    n_factor[:, :, :, 1] = numpy.array(object=degrees)[:, None, None]
     n_factor[:, :, :, 2] = n_factor[:, :, :, 1]
     return n_factor
 
@@ -85,15 +79,15 @@ def get_degrees_indices(degrees: list[int], degrees_to_plot: list[int]) -> list[
     """
     Returns the indices of the wanted degrees in the list of degrees.
     """
+
     return [list(degrees).index(degree) for degree in degrees_to_plot]
 
 
-def signal_trend(
-    trend_dates: numpy.ndarray[float], signal: numpy.ndarray[float]
-) -> tuple[float, float]:
+def trend(trend_dates: numpy.ndarray[float], signal: numpy.ndarray[float]) -> tuple[float, float]:
     """
     Returns signal's trend: mean slope and additive constant during last years (LSE).
     """
+
     # Assemble matrix A.
     a_matrix = numpy.vstack(
         [
@@ -103,7 +97,7 @@ def signal_trend(
     ).T
     # Direct least square regression using pseudo-inverse.
     result: numpy.ndarray = numpy.linalg.pinv(a_matrix).dot(signal[:, numpy.newaxis])
-    return result.flatten()  # Turn the signal into a column vector. (slope, additive_constant)
+    return result.flatten()  # (slope, additive_constant).
 
 
 def map_normalizing(
@@ -112,6 +106,7 @@ def map_normalizing(
     """
     Sets global mean as zero and max as one by homothety.
     """
+
     n_t = numpy.prod(map_array.shape)
     sum_map = sum(map_array.flatten())
     max_map = numpy.max(map_array.flatten())
@@ -124,45 +119,13 @@ def surface_ponderation(
     """
     Gets the surface of a (latitude * longitude) array.
     """
+
     return mask * numpy.expand_dims(a=numpy.cos(latitudes * numpy.pi / 180.0), axis=1)
-
-
-def mean_on_mask(
-    mask: numpy.ndarray[float],
-    latitudes: numpy.ndarray[float],
-    signal_threshold: float,
-    harmonics: Optional[numpy.ndarray[float]] = None,
-    grid: Optional[numpy.ndarray[float]] = None,
-) -> float:
-    """
-    Computes mean value over a given surface. Uses a given mask.
-    """
-    if grid is None:
-        grid: numpy.ndarray[float] = make_grid(harmonics=harmonics)
-    surface = surface_ponderation(
-        mask=mask * (numpy.abs(grid) < signal_threshold), latitudes=latitudes
-    )
-    weighted_values = grid * surface
-    return numpy.round(
-        a=sum((weighted_values).flatten()) / sum(surface.flatten()), decimals=MASK_DECIMALS
-    )
-
-
-def make_grid(
-    harmonics: numpy.ndarray[float],
-    n_max: Optional[int] = None,
-) -> numpy.ndarray[float]:
-    """
-    Computes the 2D grid corresponding to the given spherical harmonics.
-    """
-    if n_max is None:
-        n_max = harmonics.shape[1] - 1
-    result: DHRealGrid = SHCoeffs.from_array(harmonics, lmax=n_max).expand(extend=True, lmax=n_max)
-    return result.data
 
 
 def closest_index(array: numpy.ndarray, value: float) -> int:
     """
     Returns the index of the closest element in array to value.
     """
+
     return numpy.argmin(numpy.abs(array - value))

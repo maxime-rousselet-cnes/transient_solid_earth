@@ -4,24 +4,24 @@ Describes the loop using adaptatives step for all considered rheologies.
 
 import math
 from copy import deepcopy
-from time import sleep
 from typing import Optional
 
 import numpy
 
-from .database import load_base_model, load_complex_array, save_base_model
+from .database import load_complex_array, save_complex_array
 from .file_creation_observer import FileCreationObserver
 from .functions import add_sorted, round_value
 from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import DEFAULT_PARAMETERS, DiscretizationParameters, Parameters
 from .paths import intermediate_result_subpaths
 from .process_catalog import ProcessCatalog
+from .separators import is_elastic
 
 
 class AdaptativeStepProcessCatalog(ProcessCatalog):
     """
     Recap of all processes to be launched, in process, just processed and whose results have been
-    stored. Manages the whole adaptative step parallel computing loop.
+    stored. Manages the whole adaptative step parallel computing loop on periods.
     """
 
     # To memorize.
@@ -32,12 +32,13 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
 
     just_processed: set[tuple[str, float, float]] = set()
     processed: dict[tuple[str, float], dict[str, numpy.ndarray]] = {}  # "x" tab in log scale.
+    model_ids: list[str] = []
+    elastic_model_id: str
 
     def __init__(
         self,
-        fixed_parameter_list: list[float],
+        degree_list: list[float],
         rheologies: list[dict],
-        function_name: str,
         parameters: Parameters,
     ) -> None:
         """
@@ -45,17 +46,18 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
         """
 
         super().__init__(
-            function_name=function_name, parallel_computing_parameters=parameters.parallel_computing
+            function_name="love_numbers",
+            parallel_computing_parameters=parameters.parallel_computing,
         )
 
-        self.discretization_parameters = parameters.discretization[function_name]
+        self.discretization_parameters = parameters.discretization["love_numbers"]
 
         self.file_creation_observer = FileCreationObserver(
             base_path=intermediate_result_subpaths[self.function_name]
         )
 
         # Generates the loop's initial discretization.
-        initial_variable_parameter_list = round_value(
+        initial_period_list = round_value(
             t=self.discretization_parameters.exponentiation_base
             ** numpy.linspace(
                 start=math.log(
@@ -72,36 +74,24 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
         )
 
         for rheology in rheologies:
-            model_id = MODEL_TYPE_NAMES[function_name](
+
+            model_id = MODEL_TYPE_NAMES["love_numbers"](
                 solid_earth_parameters=deepcopy(parameters.solid_earth), rheology=rheology
             ).model_id
 
-            # Eventually overwrites the fixed parameter list if it depends on the model.
-            if "green_functions" in function_name:
-
-                fixed_parameter_list = self.get_variable_parameter_list(model_id=model_id)
-
-            for fixed_parameter in fixed_parameter_list:
-                self.processed[(model_id, fixed_parameter)] = {
+            for degree in degree_list:
+                self.processed[(model_id, degree)] = {
                     "x": numpy.array(object=[]),
                     "values": numpy.array(object=[]),
                 }
-                for variable_parameter in initial_variable_parameter_list:
-                    self.to_process.add((model_id, fixed_parameter, variable_parameter))
+                for period in initial_period_list:
+                    self.to_process.add((model_id, degree, period))
 
-    def get_variable_parameter_list(self, model_id: str) -> list[float]:
-        """
-        Intermediate function for concurrent I/O.
-        """
+            self.model_ids += [model_id]
 
-        try:
-            return load_base_model(
-                name="variable_parameter_values",
-                path=intermediate_result_subpaths["interpolate_love_numbers"].joinpath(model_id),
-            )
-        except FileNotFoundError:
-            sleep(self.parallel_computing_parameters.timeout)
-            return self.get_variable_parameter_list(model_id=model_id)
+            if is_elastic(model_id=model_id):
+
+                self.elastic_model_id = model_id
 
     def get_results(self) -> None:
         """
@@ -111,54 +101,48 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
 
         for path in self.file_creation_observer.get_created_file_paths():
 
-            variable_parameter = float(path.name)
-            fixed_parameter = float(path.parent.name)
+            period = float(path.name)
+            degree = float(path.parent.name)
             model_id = path.parent.parent.name
 
-            if (model_id, fixed_parameter) in self.in_process:
+            if (model_id, degree) in self.in_process:
 
-                if variable_parameter in self.in_process[
-                    (model_id, fixed_parameter)
-                ] or variable_parameter == float("inf"):
+                if period in self.in_process[(model_id, degree)] or period == float("inf"):
 
                     # Updates 'in_process'.
-                    if variable_parameter in self.in_process[(model_id, fixed_parameter)]:
-                        self.in_process[(model_id, fixed_parameter)].remove(variable_parameter)
-                    if len(
-                        self.in_process[(model_id, fixed_parameter)]
-                    ) == 0 or variable_parameter == float("inf"):
-                        del self.in_process[(model_id, fixed_parameter)]
+                    if period in self.in_process[(model_id, degree)]:
+                        self.in_process[(model_id, degree)].remove(period)
+                    if len(self.in_process[(model_id, degree)]) == 0 or period == float("inf"):
+                        del self.in_process[(model_id, degree)]
 
                     # Updates 'just_processed'.
-                    self.just_processed.add((model_id, fixed_parameter, variable_parameter))
+                    self.just_processed.add((model_id, degree, period))
 
                     # Updates 'processed'.
-                    self.processed[(model_id, fixed_parameter)] = add_sorted(
-                        result_dict=self.processed[model_id, fixed_parameter],
-                        x=math.log(
-                            variable_parameter, self.discretization_parameters.exponentiation_base
-                        ),
+                    self.processed[(model_id, degree)] = add_sorted(
+                        result_dict=self.processed[model_id, degree],
+                        x=math.log(period, self.discretization_parameters.exponentiation_base),
                         values=load_complex_array(path=path),
                     )
 
     def refine_discretization(self) -> None:
         """
-        Refines the discretization on the variable parameter for a rheology and a fixed_parameter.
+        Refines the discretization on the variable parameter for a rheology and a degree.
         Stops when the result is approximated everywhere by its linear interpolation.
         """
 
         to_postprocess: set[tuple[str, float]] = set()
         while self.just_processed:
-            model_id, fixed_parameter, _ = self.just_processed.pop()
-            if (model_id, fixed_parameter) not in self.in_process:
-                to_postprocess.add((model_id, fixed_parameter))
+            model_id, degree, _ = self.just_processed.pop()
+            if (model_id, degree) not in self.in_process:
+                to_postprocess.add((model_id, degree))
 
         # Don't test for the stop criterion if processes are still running for the same model.
-        for model_id, fixed_parameter in to_postprocess:
+        for model_id, degree in to_postprocess:
 
             # Verifies the stop criterion on the whole sequence.
-            f = self.processed[(model_id, fixed_parameter)]["values"]  # shape (T, *S)
-            x = self.processed[(model_id, fixed_parameter)]["x"]  # shape (T,)
+            f = self.processed[(model_id, degree)]["values"]  # shape (T, *S)
+            x = self.processed[(model_id, degree)]["x"]  # shape (T,)
 
             # Reshapes time arrays to broadcast with f.
             x_0 = x[:-2].reshape(-1, *([1] * (f.ndim - 1)))  # shape (T-2, 1, ..., 1)
@@ -219,64 +203,42 @@ class AdaptativeStepProcessCatalog(ProcessCatalog):
 
                 # Updates 'to_process'.
                 for variable_value in new_variable_values:
-                    self.to_process.add((model_id, fixed_parameter, variable_value))
+                    self.to_process.add((model_id, degree, variable_value))
 
             else:
 
                 # Saves results for the whole model.
-                variable_parameter_tab = round_value(
-                    t=self.discretization_parameters.exponentiation_base
-                    ** self.processed[model_id, fixed_parameter]["x"],
-                    rounding=self.discretization_parameters.rounding,
-                )
                 path = (
                     intermediate_result_subpaths[self.function_name]
                     .joinpath(model_id)
-                    .joinpath(str(fixed_parameter))
+                    .joinpath(str(degree))
                 )
-                save_base_model(
-                    obj={
-                        "variable_parameter": variable_parameter_tab,
-                        "values": self.processed[model_id, fixed_parameter]["values"].real,
-                    },
-                    name="real",
-                    path=path,
-                )
-                save_base_model(
-                    obj={
-                        "variable_parameter": variable_parameter_tab,
-                        "values": self.processed[model_id, fixed_parameter]["values"].imag,
-                    },
-                    name="imag",
-                    path=path,
-                )
+                save_complex_array(obj=self.processed[model_id, degree]["values"], path=path)
 
 
 def adaptative_step_parallel_computing_loop(
     rheologies: list[dict],
-    function_name: str,
-    fixed_parameter_list: Optional[list[float]] = None,
+    degree_list: Optional[list[float]] = None,
     parameters: Parameters = DEFAULT_PARAMETERS,
-) -> None:
+) -> tuple[list[str], str]:
     """
-    For every rheologies, uses an adaptative step.
+    For every rheologies, uses an adaptative step on frequencies.
     """
 
     # Manages default.
-    if not fixed_parameter_list:
-        fixed_parameter_list = [0.0]
+    if not degree_list:
+        degree_list = [0.0]
 
     # Initializes data structures.
     process_catalog = AdaptativeStepProcessCatalog(
-        fixed_parameter_list=fixed_parameter_list,
+        degree_list=degree_list,
         rheologies=rheologies,
-        function_name=function_name,
         parameters=parameters,
     )
 
     try:
 
-        # Loops until the stop criterion is verified for every rheologies and fixed_parameter.
+        # Loops until the stop criterion is verified for every rheologies and degree.
         while process_catalog.to_process or process_catalog.in_process:
 
             if process_catalog.to_process:
@@ -295,3 +257,5 @@ def adaptative_step_parallel_computing_loop(
     finally:
 
         process_catalog.file_creation_observer.stop()
+
+    return process_catalog.model_ids, process_catalog.elastic_model_id

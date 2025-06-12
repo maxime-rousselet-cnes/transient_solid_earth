@@ -3,6 +3,7 @@
 Needed to monitor parallel computing.
 """
 
+import dataclasses
 import os
 import shutil
 import subprocess
@@ -17,7 +18,12 @@ from typing import Iterable, Optional
 from .database import save_base_model
 from .parallel_processing_functions import functions
 from .parameters import ParallelComputingParameters
-from .paths import intermediate_result_subpaths, logs_subpaths, worker_information_subpaths
+from .paths import (
+    elastic_load_models_path,
+    intermediate_result_subpaths,
+    logs_subpaths,
+    worker_information_subpaths,
+)
 from .worker_parser import WorkerInformation
 
 
@@ -52,10 +58,8 @@ def submit_local_jobs(
 
     with ProcessPoolExecutor(
         max_workers=cpu_count()
-        // (
-            1  # Does not limit the number of prcesses if the loop is straightforward.
-            if ("interpolate" in function_name) or ("asymptotic" in function_name)
-            else max_concurrent_processes_factor
+        // (  # Does not limit the number of prcesses if the loop is straightforward.
+            max_concurrent_processes_factor if function_name == "love_numbers" else 1
         ),
         mp_context=get_context("fork"),
     ) as executor:
@@ -105,6 +109,16 @@ def submit_slurm_jobs(
     )
 
 
+@dataclasses.dataclass
+class JobArrayWatcher:
+    """
+    Encapsulates needed variables to monitor the job arrays.
+    """
+
+    i_job_array: int = 0
+    i_job_array_lock: threading.Lock = threading.Lock()
+
+
 class ProcessCatalog:
     """
     Recap of all processes to be launched and in process for a parallel computing loop.
@@ -115,8 +129,7 @@ class ProcessCatalog:
     parallel_computing_parameters: ParallelComputingParameters
     slurm: bool
     thread_semaphore: threading.Semaphore
-    i_job_array: int = 0
-    i_job_array_lock: threading.Lock
+    job_array_watcher: JobArrayWatcher = JobArrayWatcher()
     function_name: str
     threads: list[threading.Thread] = []
 
@@ -129,13 +142,15 @@ class ProcessCatalog:
         Generates the rheologies and saves the numerical models. Memorizes the IDs.
         """
 
+        # Clears potential garbage.
+        self.to_process = set()
+        self.in_process = {}
         self.function_name = function_name
         self.parallel_computing_parameters = parallel_computing_parameters
         self.slurm = is_slurm_available()
         self.thread_semaphore = threading.Semaphore(
             value=cpu_count() // parallel_computing_parameters.max_concurrent_threads_factor
         )
-        self.i_job_array_lock = threading.Lock()
 
     def update_in_process(
         self, model_id: str, fixed_parameter: float, variable_parameter: float
@@ -160,8 +175,8 @@ class ProcessCatalog:
 
         def thread_target():
 
-            with self.i_job_array_lock:
-                i_job_array_snapshot = self.i_job_array
+            with self.job_array_watcher.i_job_array_lock:
+                i_job_array_snapshot = self.job_array_watcher.i_job_array
 
             with self.thread_semaphore:  # Limits concurent threads.
                 if self.slurm:
@@ -239,8 +254,8 @@ class ProcessCatalog:
             )
         )
 
-        with self.i_job_array_lock:
-            self.i_job_array += 1
+        with self.job_array_watcher.i_job_array_lock:
+            self.job_array_watcher.i_job_array += 1
 
     def wait(self, timeout: Optional[float] = None) -> None:
         """
@@ -253,18 +268,46 @@ class ProcessCatalog:
             if thread.is_alive():
                 thread.join(timeout=timeout)
 
-    def wait_for_jobs(
-        self, subpath_name: Optional[str] = None, timeout: Optional[float] = None
-    ) -> None:
+    def wait_for_jobs(self, timeout: Optional[float] = None) -> None:
         """
         Waits for all jobs to finish.
         """
 
+        if self.function_name == "generate_elastic_load_models":
+
+            performed = []
+
+            while len(performed) < len(self.in_process):
+
+                performed = list(elastic_load_models_path.glob("*.json"))
+
+            self.wait(timeout=timeout)
+            return
+
         while self.in_process:
-            for (model_id, _), __ in deepcopy(self.in_process).items():
-                path = intermediate_result_subpaths[self.function_name].joinpath(model_id)
-                if subpath_name:
-                    path = path.joinpath(subpath_name)
-                if path.exists():
-                    self.in_process.pop((model_id, _))
-                    self.wait(timeout=timeout)
+
+            for (model_id, _), variable_parameters in deepcopy(self.in_process).items():
+
+                if self.function_name == "interpolate_love_numbers":
+
+                    for interpolation_basis_id in variable_parameters:
+
+                        path = (
+                            intermediate_result_subpaths[self.function_name]
+                            .joinpath(interpolation_basis_id)
+                            .joinpath(model_id)
+                        )
+
+                        if path.exists():
+
+                            self.in_process.pop((model_id, _))
+                            self.wait(timeout=timeout)
+
+                else:
+
+                    path = intermediate_result_subpaths[self.function_name].joinpath(model_id)
+
+                    if path.exists():
+
+                        self.in_process.pop((model_id, _))
+                        self.wait(timeout=timeout)

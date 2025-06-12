@@ -2,14 +2,26 @@
 Defines all parameter classes.
 """
 
+from hashlib import sha256
+from json import dumps
 from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from .constants import DEFAULT_SPLINE_NUMBER, EARTH_RADIUS
-from .database import load_base_model
+from .constants import DEFAULT_SPLINE_NUMBER, EARTH_RADIUS, HASH_LENGTH
+from .database import extract_terminal_attributes, load_base_model
 from .paths import SolidEarthModelPart, data_path
+
+
+def generate_hash(input_dict: dict[str, Any]) -> str:
+    """
+    Generates a hash from the input dictionary.
+    """
+
+    return sha256(dumps(input_dict, sort_keys=True, default=str).encode("utf-8")).hexdigest()[
+        :HASH_LENGTH
+    ]
 
 
 class SolidEarthModelOptionParameters(BaseModel):
@@ -132,26 +144,6 @@ class DiscretizationParameters(BaseModel):
 
 
 DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS = DiscretizationParameters()
-DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
-    value_min=1.0e-2,
-    value_max=1.0e2,
-    n_0=3,
-    maximum_tolerance=5e-3,
-    precision=1.0e-4,
-    exponentiation_base=10.0,
-    rounding=10,
-    min_step=1.2,
-)
-DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS = DiscretizationParameters(
-    value_min=1.0e-5,
-    value_max=179.5,
-    n_0=3,
-    maximum_tolerance=5e-3,
-    precision=1.0e-4,
-    exponentiation_base=10.0,
-    round=10,
-    min_step=1.2,
-)
 
 
 class SolidEarthDegreeDiscretizationParameters(BaseModel):
@@ -177,7 +169,6 @@ class SolidEarthIntegrationNumericalParameters(BaseModel):
     minimal_radius: float = 1.0e3  # r ~= 0 km exact definition (m).
     atol: float = 1.0e-14  # The solver keeps the local error estimates under atol + rtol * abs(yr).
     rtol: float = 1.0e-7  # See atol parameter description.
-    n_min_for_asymptotic_behavior: int = 5000
 
 
 DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS = SolidEarthIntegrationNumericalParameters()
@@ -193,7 +184,6 @@ class SolidEarthNumericalParameters(BaseModel):
     integration_parameters: SolidEarthIntegrationNumericalParameters = (
         DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
     )
-    n_max_green: int = 2000
 
     def __init_subclass__(cls, **kwargs):
         return super().__init_subclass__(**kwargs)
@@ -205,7 +195,6 @@ class SolidEarthNumericalParameters(BaseModel):
         integration_parameters: SolidEarthIntegrationNumericalParameters = (
             DEFAULT_SOLID_EARTH_INTEGRATION_NUMERICAL_PARAMETERS
         ),
-        n_max_green: int = 2000,
     ) -> None:
 
         super().__init__()
@@ -217,7 +206,6 @@ class SolidEarthNumericalParameters(BaseModel):
             if isinstance(integration_parameters, SolidEarthIntegrationNumericalParameters)
             else SolidEarthIntegrationNumericalParameters(**integration_parameters)
         )
-        self.n_max_green = n_max_green
 
 
 DEFAULT_SOLID_EARTH_NUMERICAL_PARAMETERS = SolidEarthNumericalParameters()
@@ -228,7 +216,6 @@ class SolidEarthOptionParameters(BaseModel):
     Parameters for optional computations
     """
 
-    compute_green: bool = True
     model_id: Optional[str] = None
     save: bool = True
     overwrite_model: bool = False
@@ -302,9 +289,9 @@ class LoadModelNumericalParameters(BaseModel):
     initial_past_trend_factor: float = 1.22
     anti_Gibbs_effect_factor: int = 0  # Integer, minimum equal to 1 (unitless).
     spline_time_years: int = 50  # Time for the anti-symmetrization spline process in years.
-    initial_plateau_time_years: (
-        int  # Time of the zero-value plateau before the signal history (yr).
-    ) = 2000
+    initial_plateau_date: int = (  # Time of the zero-value plateau before the signal history (yr).
+        -1000
+    )
     signal_threshold: float = 12.0  # (mm/yr).
     signal_threshold_past: float = 6.0  # (mm/yr).
     mean_signal_threshold: Optional[float] = None  # (mm/yr).
@@ -313,8 +300,10 @@ class LoadModelNumericalParameters(BaseModel):
     ocean_mask: str = "IMERG_land_sea_mask.nc"
     continents: str = "geopandas-continents.zip"
     buffer_distance: float = 300.0  # Buffer to coast (km).
-    first_year_for_trend: int = 2003
-    last_year_for_trend: int = 2022
+    first_year_for_recent_trend: int = 2003
+    last_year_for_recent_trend: int = 2022
+    first_year_for_past_trend: int = 1900
+    last_year_for_past_trend: int = 2002
     past_trend_error: float = (
         1e-3  # Maximal admitted error for past trend matching to data (mm/yr).
     )
@@ -336,8 +325,6 @@ class LoadModelPoleParameters(BaseModel):
     pole_secular_term_trend_end_date: int = 1978
     ramp: bool = False
     filter_wobble: bool = True  # Whether to filter low-pass at the annual frequency.
-    phi_constant: bool = True
-    remove_pole_secular_trend: bool = False
     remove_mean_pole: bool = True
     wobble_filtering_kernel_length: int = 50
 
@@ -364,9 +351,7 @@ class LoadModelHistoryParameters(BaseModel):
     Defines the temporal evolution of the load model.
     """
 
-    file: str = (
-        "Frederikse/global_basin_timeseries.csv"  # (.csv) file path relative to data/GMSL_data.
-    )
+    file: str = "global_basin_timeseries.csv"  # (.csv) file path relative to data/GMSL_data.
     start_date: int = 1900  # Usually 1900 for Frederikse GMSL data.
     case: str = "mean"  # Whether "lower", "mean" or "upper".
     pole: LoadModelPoleParameters = DEFAULT_LOAD_MODEL_POLE_PARAMETERS
@@ -382,7 +367,7 @@ class LoadModelSpatialSignatureParameters(BaseModel):
     """
 
     opposite_load_on_continents: bool = False
-    n_max: int = 88
+    n_max: int = 89
     # (.csv) file path relative to data.
     file: str = "DDK7/TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
 
@@ -397,13 +382,12 @@ class LoadModelOptionParameters(BaseModel):
 
     compute_residuals: bool = False
     invert_for_J2: bool = False
-    compute_displacements: bool = True
 
 
 DEFAULT_LOAD_MODEL_OPTION_PARAMETERS = LoadModelOptionParameters()
 
 
-class LoadNumericalModelParameters(BaseModel):
+class LoadModelParameters(BaseModel):
     """
     Defines the load model and algorithm parameters.
     """
@@ -452,13 +436,37 @@ class LoadNumericalModelParameters(BaseModel):
         )
         if "MSSA" in self.signature.file:
             self.numerical_parameters.ddk_filter_level = 7
+        elif self.numerical_parameters.ddk_filter_level == 7:
+            self.numerical_parameters.ddk_filter_level = 5
         if not "DDK" in self.signature.file:
             self.signature.file = (
                 "DDK" + str(self.numerical_parameters.ddk_filter_level) + "/" + self.signature.file
             )
 
+    def model_id(self) -> str:
+        """
+        Hashes the attributes to produce a unique deterministic ID.
+        """
 
-DEFAULT_LOAD_NUMERICAL_MODEL_PARAMETERS = LoadNumericalModelParameters()
+        return generate_hash(input_dict=extract_terminal_attributes(obj=self))
+
+    def interpolation_basis_id(self) -> str:
+        """
+        Hashes the attributes to produce a unique deterministic ID for periods and degrees.
+        """
+
+        return generate_hash(
+            input_dict={
+                "start_date": self.history.start_date,
+                "anti_Gibbs_effect_factor": self.numerical_parameters.anti_Gibbs_effect_factor,
+                "spline_time_years": self.numerical_parameters.spline_time_years,
+                "initial_plateau_date": self.numerical_parameters.initial_plateau_date,
+                "last_year_for_recent_trend": self.numerical_parameters.last_year_for_recent_trend,
+            }
+        )
+
+
+DEFAULT_LOAD_MODEL_PARAMETERS = LoadModelParameters()
 
 
 class LoadParameters(BaseModel):
@@ -467,7 +475,7 @@ class LoadParameters(BaseModel):
     """
 
     save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
-    model: LoadNumericalModelParameters = DEFAULT_LOAD_NUMERICAL_MODEL_PARAMETERS
+    model: LoadModelParameters = DEFAULT_LOAD_MODEL_PARAMETERS
 
 
 DEFAULT_LOAD_PARAMETERS = LoadParameters()
@@ -521,9 +529,7 @@ class Parameters(BaseModel):
     load_model_variabilities: dict[str, Any] = {}
     parallel_computing: ParallelComputingParameters = DEFAULT_PARALLEL_COMPUTING_PARAMETERS
     discretization: dict[str, DiscretizationParameters] = {
-        "love_numbers": DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS,
-        "test_models": DEFAULT_TEST_MODELS_DISCRETIZATION_PARAMETERS,
-        "green_functions": DEFAULT_GREEN_FUNCTIONS_DISCRETIZATION_PARAMETERS,
+        "love_numbers": DEFAULT_LOVE_NUMBERS_DISCRETIZATION_PARAMETERS
     }
 
 
@@ -563,14 +569,3 @@ ELASTIC_SOLID_EARTH_MODEL_OPTION_PARAMETERS = SolidEarthModelOptionParameters(
     use_short_term_anelasticity=False,
     use_bounded_attenuation_functions=False,
 )
-
-
-def asymptotic_degree_value(parameters: Parameters) -> int:
-    """
-    Returns the maximum degree for the asymptotic love numbers.
-    """
-
-    return min(
-        parameters.solid_earth.numerical_parameters.n_max_green,
-        parameters.solid_earth.degree_discretization.thresholds[-1],
-    )

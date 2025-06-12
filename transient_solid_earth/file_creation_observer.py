@@ -12,6 +12,37 @@ from watchdog.observers.api import BaseObserver
 from .paths import INTERMEDIATE_RESULT_STRING
 
 
+class Handler(FileSystemEventHandler):
+    """
+    Handler for file system events. Sets an event flag when a new file is created or touched.
+    """
+
+    def __init__(self, event_flag: threading.Event, created_file_paths: list[Path]):
+        self.event_flag = event_flag
+        self.created_file_paths = created_file_paths
+        self._seen = set()
+
+    def _handle_event(self, path: str):
+        p = Path(path)
+        if p not in self._seen and not p.is_dir():
+            self._seen.add(p)
+            self.event_flag.set()
+            self.created_file_paths.append(p)
+
+    def on_created(self, event):
+        self._handle_event(event.src_path)
+
+    def on_modified(self, event):
+        self._handle_event(event.src_path)
+
+    def reset_seen(self):
+        """
+        Resets.
+        """
+
+        self._seen.clear()
+
+
 class FileCreationObserver:
     """
     Monitors a directory for new file creations or touches.
@@ -21,7 +52,7 @@ class FileCreationObserver:
     new_file_detected: threading.Event
     base_path: Path
     created_file_paths: list[Path]
-    handler: FileSystemEventHandler
+    handler: Handler
 
     def __init__(self, base_path: Path):
         """
@@ -35,42 +66,12 @@ class FileCreationObserver:
         self.base_path = base_path
         self.created_file_paths = []
 
-        self.handler = self.Handler(
+        self.handler = Handler(
             event_flag=self.new_file_detected, created_file_paths=self.created_file_paths
         )
 
         self.observer.schedule(self.handler, self.base_path, recursive=True)
         self.observer.start()
-
-    class Handler(FileSystemEventHandler):
-        """
-        Handler for file system events. Sets an event flag when a new file is created or touched.
-        """
-
-        def __init__(self, event_flag: threading.Event, created_file_paths: list[Path]):
-            self.event_flag = event_flag
-            self.created_file_paths = created_file_paths
-            self._seen = set()
-
-        def _handle_event(self, path: str):
-            p = Path(path)
-            if p not in self._seen and not p.is_dir():
-                self._seen.add(p)
-                self.event_flag.set()
-                self.created_file_paths.append(p)
-
-        def on_created(self, event):
-            self._handle_event(event.src_path)
-
-        def on_modified(self, event):
-            self._handle_event(event.src_path)
-
-        def reset_seen(self):
-            """
-            Resets.
-            """
-
-            self._seen.clear()
 
     def file_has_been_created(self) -> bool:
         """

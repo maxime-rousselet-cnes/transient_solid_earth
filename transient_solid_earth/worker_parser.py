@@ -43,14 +43,15 @@ class WorkerInformation(BaseModel):
     """
 
     model_id: str
-    fixed_parameter: float
-    variable_parameter: float
+    fixed_parameter: float  # Usually, degree or flag.
+    variable_parameter: float | str  # Usually, period or flag.
 
 
 def parse_worker_information(function_name: str) -> WorkerInformation:
     """
     Parses the command line arguments for a worker of any specific kind.
     """
+
     args = parse_worker_args()
 
     # Gets all the worker's needed informations.
