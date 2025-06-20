@@ -162,10 +162,6 @@ def is_in_table(table_name: str, id_to_check: str) -> bool:
 
         df = read_csv(file)
 
-        print(df["ID"])
-        print(id_to_check)
-        print(id_to_check in df["ID"].values)
-
         return id_to_check in df["ID"].values
 
     return False
