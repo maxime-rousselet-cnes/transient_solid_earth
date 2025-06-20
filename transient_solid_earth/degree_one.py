@@ -200,7 +200,9 @@ class ParallelDegreOneInversionChunkResult:
         )
         self.period_dependent_vertical_displacement[:, :, 1, :2] = (
             DENSITY_RATIO
-            * love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.VERTICAL.value]
+            * love_numbers_chunk[
+                :, 0, BoundaryCondition.LOAD.value, Direction.VERTICAL.value, None, None
+            ]
             * self.period_dependent_degree_one
         )
 
