@@ -157,7 +157,7 @@
         "job_array_max_file_size": 1000,
         "max_concurrent_threads_factor": 4,
         "max_concurrent_processes_factor": 4,
-        "degree_one_inversion_chunks": 64,
+        "degree_one_inversion_chunks": 32,
         "timeout": 0.1
     },
     "discretization": {

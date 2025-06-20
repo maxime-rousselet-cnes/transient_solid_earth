@@ -232,7 +232,7 @@ class ParallelComputingParameters(BaseModel):
     job_array_max_file_size: int = 1000
     max_concurrent_threads_factor: int = 4
     max_concurrent_processes_factor: int = 4
-    degree_one_inversion_chunks: int = 64
+    degree_one_inversion_chunks: int = 32
     timeout: float = 0.1
 
 

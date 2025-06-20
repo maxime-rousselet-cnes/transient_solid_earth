@@ -192,7 +192,9 @@ class ParallelDegreOneInversionChunkResult:
             DENSITY_RATIO
             * (
                 1.0
-                + love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
+                + love_numbers_chunk[
+                    :, 0, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value, None, None
+                ]
             )
             * self.period_dependent_degree_one
         )
