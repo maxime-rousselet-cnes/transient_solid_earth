@@ -13,6 +13,7 @@ def generate_n_factor(degrees: numpy.ndarray) -> numpy.ndarray:
     n_factor = numpy.ones(shape=(len(degrees), 1, 1, 3))
     n_factor[:, :, :, 1] = numpy.array(object=degrees)[:, None, None]
     n_factor[:, :, :, 2] = n_factor[:, :, :, 1]
+
     return n_factor
 
 
@@ -24,7 +25,9 @@ def sum_lists(lists: list[list]) -> list:
     concatenated_list = []
 
     for elt in lists:
+
         for sub_elt in elt:
+
             concatenated_list += sub_elt
 
     return concatenated_list
@@ -38,17 +41,18 @@ def round_value(t: float, rounding: int) -> float:
     x = numpy.asarray(t)
     sign = numpy.sign(x)
     x_abs = numpy.abs(x)
-
     exp = numpy.zeros_like(x_abs, dtype=int)
 
-    # Valid values are finite and non-zero
+    # Valid values are finite and non-zero.
     valid = numpy.isfinite(x_abs) & (x_abs != 0)
 
     with numpy.errstate(divide="ignore", invalid="ignore"):
+
         exp[valid] = numpy.floor(numpy.log10(x_abs[valid])).astype(int)
 
     factor = 10.0 ** (exp - rounding + 1)
     truncated = numpy.floor(x_abs / factor) * factor
+
     return sign * truncated
 
 
@@ -61,8 +65,11 @@ def add_sorted(
     """
 
     position = 0
+
     while (position < len(result_dict["x"])) and (result_dict["x"][position] < x):
+
         position += 1
+
     return {
         "x": numpy.array(
             object=result_dict["x"][:position].tolist() + [x] + result_dict["x"][position:].tolist()
@@ -95,8 +102,10 @@ def trend(trend_dates: numpy.ndarray[float], signal: numpy.ndarray[float]) -> tu
             numpy.ones(len(trend_dates)),
         ]
     ).T
+
     # Direct least square regression using pseudo-inverse.
-    result: numpy.ndarray = numpy.linalg.pinv(a_matrix).dot(signal[:, numpy.newaxis])
+    result: numpy.ndarray = numpy.linalg.pinv(a_matrix).dot(signal[:, None])
+
     return result.flatten()  # (slope, additive_constant).
 
 
@@ -110,6 +119,7 @@ def map_normalizing(
     n_t = numpy.prod(map_array.shape)
     sum_map = sum(map_array.flatten())
     max_map = numpy.max(map_array.flatten())
+
     return map_array / (max_map - sum_map / n_t) + sum_map / (sum_map - max_map * n_t)
 
 
@@ -129,3 +139,20 @@ def closest_index(array: numpy.ndarray, value: float) -> int:
     """
 
     return numpy.argmin(numpy.abs(array - value))
+
+
+def chunkify_array(complex_array: numpy.ndarray, chunks: int) -> list[numpy.ndarray]:
+    """
+    Chunkifies a complex array for parallel computing.
+    """
+
+    n_periods = len(complex_array)
+
+    chunk_length = int(numpy.ceil(n_periods // chunks))
+
+    return [
+        complex_array[
+            chunk_id * chunk_length : min(n_periods, (chunk_id + 1) * chunk_length)
+        ].copy()
+        for chunk_id in range(chunks)
+    ]

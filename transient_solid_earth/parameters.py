@@ -232,6 +232,7 @@ class ParallelComputingParameters(BaseModel):
     job_array_max_file_size: int = 1000
     max_concurrent_threads_factor: int = 4
     max_concurrent_processes_factor: int = 4
+    degree_one_inversion_chunks: int = 64
     timeout: float = 0.1
 
 
@@ -260,17 +261,15 @@ class LoadSaveOptionParameters(BaseModel):
     """
 
     all: bool = True  # Overwrites all other parameters with 'True' if set to 'True'.
-    step_1: bool = True  # Initial model signal.
-    step_2: bool = True  # Anelastic correcting polatr tide coefficients.
-    step_3: (
-        bool  # Anelastic load signal computed after frequencial filtering by Love number fractions.
-    ) = True
-    step_4: bool = True  # Anelastic load signal computed after degree one inversion.
-    step_5: bool = True  # Anelastic load signal computed after leakage corretion.
-    # Initial.
+    # Initial load model.
+    # Anelastic correcting polatr tide coefficients.
+    # Anelastic load model computed after frequencial filtering by Love number fractions.
+    # Anelastic load model computed after degree one inversion,
+    # Anelastic load model computed after leakage corretion.
+    steps: list[bool] = [True, True, True, True, True]
     inversion_components: (
         bool  # Three remaining components of degree one inversion equation:
-        # geoid height, radial displacement and residuals.
+        # geoid deformation, vertical displacement and residuals.
     ) = True
 
 
@@ -289,13 +288,12 @@ class LoadModelNumericalParameters(BaseModel):
     initial_past_trend_factor: float = 1.22
     anti_Gibbs_effect_factor: int = 0  # Integer, minimum equal to 1 (unitless).
     spline_time_years: int = 50  # Time for the anti-symmetrization spline process in years.
-    initial_plateau_date: int = (  # Time of the zero-value plateau before the signal history (yr).
-        -1000
-    )
-    signal_threshold: float = 12.0  # (mm/yr).
-    signal_threshold_past: float = 6.0  # (mm/yr).
-    mean_signal_threshold: Optional[float] = None  # (mm/yr).
-    mean_signal_threshold_past: Optional[float] = None  # (mm/yr).
+    # Time of the zero-value plateau before the load model history (yr).
+    initial_plateau_date: int = -500
+    ewh_threshold: float = 12.0  # (mm/yr). Threshold to consider for leakage correction.
+    ewh_threshold_past: float = 6.0  # (mm/yr).
+    mean_ewh_threshold: Optional[float] = None  # (mm/yr). Threshold to consider for ocean mean.
+    mean_ewh_threshold_past: Optional[float] = None  # (mm/yr).
     ddk_filter_level: int = 5
     ocean_mask: str = "IMERG_land_sea_mask.nc"
     continents: str = "geopandas-continents.zip"
@@ -367,7 +365,7 @@ class LoadModelSpatialSignatureParameters(BaseModel):
     """
 
     opposite_load_on_continents: bool = False
-    n_max: int = 89
+    n_max: int = 90
     # (.csv) file path relative to data.
     file: str = "DDK7/TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
 
@@ -380,8 +378,9 @@ class LoadModelOptionParameters(BaseModel):
     Defines optional computations for the load algorithm.
     """
 
-    compute_residuals: bool = False
-    invert_for_J2: bool = False
+    compute_residuals: bool = True
+    invert_for_J2: bool = True
+    save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
 
 
 DEFAULT_LOAD_MODEL_OPTION_PARAMETERS = LoadModelOptionParameters()
@@ -469,18 +468,6 @@ class LoadModelParameters(BaseModel):
 DEFAULT_LOAD_MODEL_PARAMETERS = LoadModelParameters()
 
 
-class LoadParameters(BaseModel):
-    """
-    Load model and algorithm parameters, including save options.
-    """
-
-    save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
-    model: LoadModelParameters = DEFAULT_LOAD_MODEL_PARAMETERS
-
-
-DEFAULT_LOAD_PARAMETERS = LoadParameters()
-
-
 class SolidEarthVariableParameters(BaseModel):
     """
     Needed fields to describes the loop on rheological models.
@@ -522,7 +509,7 @@ class Parameters(BaseModel):
     """
 
     solid_earth: SolidEarthParameters = DEFAULT_SOLID_EARTH_PARAMETERS
-    load: LoadParameters = DEFAULT_LOAD_PARAMETERS
+    load_model: LoadModelParameters = DEFAULT_LOAD_MODEL_PARAMETERS
     solid_earth_variabilities: SolidEarthVariableParameters = (
         DEFAULT_SOLID_EARTH_VARIABLE_PARAMETERS
     )

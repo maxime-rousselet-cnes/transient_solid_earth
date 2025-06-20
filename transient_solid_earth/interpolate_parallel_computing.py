@@ -7,8 +7,8 @@ from typing import Optional
 
 import numpy
 
+from .adaptative_step_parallel_computing import MODEL_TYPE_NAMES
 from .database import save_base_model
-from .model_type_names import MODEL_TYPE_NAMES
 from .parameters import DEFAULT_PARAMETERS, Parameters
 from .paths import intermediate_result_subpaths
 from .process_catalog import ProcessCatalog
@@ -16,7 +16,7 @@ from .process_catalog import ProcessCatalog
 
 class InterpolateProcessCatalog(ProcessCatalog):
     """
-    Memorizes all interpolation processes to runand schedule them.
+    Memorizes all interpolation processes to run and schedule them.
     """
 
     def __init__(

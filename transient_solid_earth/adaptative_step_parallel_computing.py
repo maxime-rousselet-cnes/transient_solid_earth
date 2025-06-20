@@ -4,18 +4,24 @@ Describes the loop using adaptatives step for all considered rheologies.
 
 import math
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, Type
 
 import numpy
 
 from .database import load_complex_array, save_complex_array
 from .file_creation_observer import FileCreationObserver
 from .functions import add_sorted, round_value
-from .model_type_names import MODEL_TYPE_NAMES
+from .generic_rheology_model import MODEL, GenericRheologyModel
 from .parameters import DEFAULT_PARAMETERS, DiscretizationParameters, Parameters
 from .paths import intermediate_result_subpaths
 from .process_catalog import ProcessCatalog
 from .separators import is_elastic
+from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
+
+MODEL_TYPE_NAMES: dict[str, Type[MODEL]] = {
+    "love_numbers": SolidEarthFullNumericalModel,
+    "interpolate_love_numbers": GenericRheologyModel,
+}
 
 
 class AdaptativeStepProcessCatalog(ProcessCatalog):

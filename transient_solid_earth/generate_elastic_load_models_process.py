@@ -4,20 +4,20 @@ Worker to interpolate Love numbers on the same periods.
 
 import numpy
 
-from .database import load_base_model
+from .database import add_result_to_table, extract_terminal_attributes, is_in_table, load_base_model
+from .elastic_load_models import (
+    BaseProducts,
+    ElasticLoadModel,
+    ElasticLoadModelSpatialProducts,
+    SideProducts,
+    TemporalProducts,
+)
 from .formating import (
     generate_anti_symmetric_signal_model,
     generate_full_signal,
     load_barystatic_load_model,
     load_load_model_harmonic_component,
     load_polar_motion_time_series,
-)
-from .load_signal_model import (
-    ElasticLoadModel,
-    ElasticLoadModelBaseProducts,
-    ElasticLoadModelSideProducts,
-    ElasticLoadModelSpatialProducts,
-    ElasticLoadModelTemporalProducts,
 )
 from .parameters import LoadModelParameters
 from .paths import elastic_load_model_parameters_subpath
@@ -104,7 +104,7 @@ def generate_time_dependent_products(
     polar_motion_dates: numpy.ndarray[float],
     m_1: numpy.ndarray[float],
     m_2: numpy.ndarray[float],
-) -> tuple[ElasticLoadModelTemporalProducts, numpy.ndarray[float], ElasticLoadModelSideProducts]:
+) -> tuple[TemporalProducts, numpy.ndarray[float], SideProducts]:
     """
     Generates the period-dependent components of the elastic load model.
     """
@@ -131,13 +131,13 @@ def generate_time_dependent_products(
     )
 
     return (
-        ElasticLoadModelTemporalProducts(
+        TemporalProducts(
             full_load_model_dates=full_load_model_dates,
             target_past_trend=past_trend,
             periods=periods,
         ),
         time_dependent_component,
-        ElasticLoadModelSideProducts(
+        SideProducts(
             past_trend_indices=past_trend_indices,
             recent_trend_indices=recent_trend_indices,
             time_dependent_m_1=time_dependent_m_1,
@@ -173,9 +173,9 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
 
     # Period-dependent components
     (
-        elastic_load_model_temporal_products,
+        temporal_products,
         time_dependent_component,
-        elastic_load_model_side_products,
+        side_products,
     ) = generate_time_dependent_products(
         load_model_parameters=load_model_parameters,
         polar_motion_dates=polar_motion_dates,
@@ -183,24 +183,31 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
         m_2=m_2,
     )
 
-    # Creates the elastic load model.
-    ElasticLoadModel(
-        elastic_load_model_spatial_products=ElasticLoadModelSpatialProducts(
-            latitudes=latitudes,
-            longitudes=longitudes,
-            ocean_land_mask=ocean_land_mask,
-            ocean_land_buffered_mask=ocean_land_buffered_mask,
-        ),
-        elastic_load_model_base_products=ElasticLoadModelBaseProducts(
-            elastic_load_model_temporal_products=elastic_load_model_temporal_products,
-            load_model_harmonic_component=load_model_harmonic_component,
-            time_dependent_component=time_dependent_component,
-        ),
-        elastic_load_model_side_products=elastic_load_model_side_products,
-        load_model_parameters=load_model_parameters,
-    ).save()
+    load_model_line = extract_terminal_attributes(obj=load_model_parameters)
+    load_model_line["ID"] = load_model_parameters.model_id()
 
-    # Renames input (.JSON) file.
-    elastic_load_model_parameters_subpath.joinpath(worker_information.model_id + ".json").rename(
-        elastic_load_model_parameters_subpath.joinpath(load_model_parameters.model_id() + ".json")
-    )
+    if not is_in_table(table_name="elastic_load_models", id_to_check=load_model_line["ID"]):
+
+        add_result_to_table(table_name="elastic_load_models", dictionary=load_model_line)
+
+        # Creates the elastic load model.
+        ElasticLoadModel(
+            elastic_load_model_spatial_products=ElasticLoadModelSpatialProducts(
+                latitudes=latitudes,
+                longitudes=longitudes,
+                ocean_land_mask=ocean_land_mask,
+                ocean_land_buffered_mask=ocean_land_buffered_mask,
+            ),
+            base_products=BaseProducts(
+                temporal_products=temporal_products,
+                load_model_harmonic_component=load_model_harmonic_component,
+                time_dependent_component=time_dependent_component,
+            ),
+            side_products=side_products,
+            load_model_parameters=load_model_parameters,
+        ).save()
+
+        # Renames input (.JSON) file.
+        elastic_load_model_parameters_subpath.joinpath(
+            worker_information.model_id + ".json"
+        ).rename(elastic_load_model_parameters_subpath.joinpath(load_model_line["ID"] + ".json"))

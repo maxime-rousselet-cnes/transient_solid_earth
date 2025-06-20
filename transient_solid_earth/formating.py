@@ -45,7 +45,7 @@ def load_barystatic_load_model(
     df = pandas.read_csv(
         filepath_or_buffer=path.joinpath(load_model_parameters.history.file), sep=","
     )
-    signal_dates = df["Unnamed: 0"].values
+    dates = df["Unnamed: 0"].values
 
     # Formats. Barystatic = Sum - Steric.
     sum_lists: dict[str, list[str]] = {
@@ -85,7 +85,7 @@ def load_barystatic_load_model(
         b = barystatic[end][0] - a * barystatic["mean"][0]
         barystatic[load_model_parameters.history.case] = a * barystatic["mean"] + b
 
-    return signal_dates, barystatic[load_model_parameters.history.case] - (
+    return dates, barystatic[load_model_parameters.history.case] - (
         barystatic[load_model_parameters.history.case][0] if zero_at_origin else 0
     )
 
@@ -193,19 +193,97 @@ def redefine_n_max(n_max: int, grid_or_harmonics: numpy.ndarray[float]) -> int:
     Gets maximal number of degees, limited by grid or harmonics size.
     """
 
-    if len(grid_or_harmonics.shape) == 3:
-        return min(n_max, len(grid_or_harmonics[0]) - 1)
+    if grid_or_harmonics.shape[1] == grid_or_harmonics.shape[0]:  # Then it is harmonics.
+        return min(n_max, len(grid_or_harmonics) - 1)
     return min(n_max, (len(grid_or_harmonics) - 1) // 2 - 1)
 
 
-def make_grid(harmonics: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
+def stack_harmonics(harmonics: numpy.ndarray) -> numpy.ndarray:
+    """
+    Returns a dense representation of spherical harmonics from the two triangular matrices
+    representation.
+    """
+
+    dense_harmonics = numpy.array(object=harmonics[0])
+
+    for i_degree in range(1, dense_harmonics.shape[0]):
+
+        dense_harmonics[i_degree - 1, i_degree:] = harmonics[1][-i_degree][
+            1 : dense_harmonics.shape[0] - i_degree + 1
+        ]
+
+    return dense_harmonics
+
+
+def unstack_harmonics(dense_harmonics: numpy.ndarray) -> numpy.ndarray:
+    """
+    Returns spherical harmonics represented by two triangular matrices from a dense representation.
+    """
+
+    harmonics = numpy.zeros(
+        numpy.concatenate(([2], dense_harmonics.shape)), dtype=dense_harmonics.dtype
+    )
+    harmonics[0] = dense_harmonics
+
+    for i_degree in range(1, harmonics.shape[1]):
+
+        harmonics[1, -i_degree, 1 : harmonics.shape[1] - i_degree + 1] = harmonics[
+            0, i_degree - 1, i_degree:
+        ]
+        harmonics[0, i_degree - 1, i_degree:] = 0
+
+    return harmonics
+
+
+def stack_period_dependent_harmonics(period_dependent_harmonics: numpy.ndarray) -> numpy.ndarray:
+    """
+    Returns a dense representation of period dendent spherical harmonics from the two triangular
+    matrices representation. Period axis is still the first axis.
+    """
+
+    return numpy.array(
+        object=[stack_harmonics(harmonics=harmonics) for harmonics in period_dependent_harmonics],
+        dtype=numpy.complex64,
+    )
+
+
+def unstack_period_dependent_harmonics(
+    dense_period_dependent_harmonics: numpy.ndarray,
+) -> numpy.ndarray:
+    """
+    Returns period dependent spherical harmonics represented by two triangular matrices from a dense
+    representation. Period axis is still the first axis.
+    """
+
+    return numpy.array(
+        object=[
+            unstack_harmonics(dense_harmonics=harmonics)
+            for harmonics in dense_period_dependent_harmonics
+        ],
+        dtype=numpy.complex64,
+    )
+
+
+def make_grid_from_unstacked(harmonics: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
     """
     From C/S spherical harmonics (2, n_max + 1, n_max + 1)
     to grid (2 * (n_max + 1) + 1, 4 * (n_max + 1) + 1).
     """
 
     result: DHRealGrid = SHCoeffs.from_array(harmonics, lmax=n_max).expand(extend=True, lmax=n_max)
+
     return result.data
+
+
+def make_grid(harmonics: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
+    """
+    From C/S spherical harmonics (n_max + 1, n_max + 1)
+    to grid (2 * (n_max + 1) + 1, 4 * (n_max + 1) + 1).
+    """
+
+    return make_grid_from_unstacked(
+        harmonics=unstack_harmonics(dense_harmonics=harmonics), n_max=n_max
+    )
 
 
 def harmonics_sampling_to_grid(harmonics: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
@@ -214,16 +292,16 @@ def harmonics_sampling_to_grid(harmonics: numpy.ndarray[float], n_max: int) -> n
     C/S spherical harmonics.
     """
 
-    return make_grid(harmonics=harmonics[:, : n_max + 1, : n_max + 1], n_max=n_max)
+    return make_grid(harmonics=harmonics[: n_max + 1, : n_max + 1], n_max=n_max)
 
 
 def make_harmonics(grid: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
     """
-    Defines C/S harmonics (2, n_max + 1, n_max + 1) from a grid.
+    Defines C/S harmonics (n_max + 1, n_max + 1) from a grid.
     """
 
     result: SHRealCoeffs | SHComplexCoeffs = SHGrid.from_array(array=grid).expand(lmax_calc=n_max)
-    return result.coeffs
+    return stack_harmonics(harmonics=result.coeffs)
 
 
 def grid_sampling(grid: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
@@ -409,7 +487,7 @@ def load_load_model_harmonic_component(
                 latitudes=latitudes,
                 load_model_parameters=load_model_parameters.signature.n_max,
                 grid_or_harmonics=grid,
-                signal_threshold=numpy.inf,
+                ewh_threshold=numpy.inf,
             )
             * sum(surface_ponderation(mask=ocean_land_mask, latitudes=latitudes).flatten())
             / sum(surface_ponderation(mask=(1 - ocean_land_mask), latitudes=latitudes).flatten())
@@ -473,7 +551,7 @@ def mean_on_mask(
     latitudes: numpy.ndarray[float],
     load_model_parameters: LoadModelParameters,
     grid_or_harmonics: numpy.ndarray[float],
-    signal_threshold: Optional[float] = None,
+    ewh_threshold: float,
 ) -> float:
     """
     Computes mean value over a given surface. Uses a given mask.
@@ -481,19 +559,11 @@ def mean_on_mask(
 
     grid = (
         grid_or_harmonics
-        if len(grid_or_harmonics.shape) == 2
+        if grid_or_harmonics.shape[0] != grid_or_harmonics.shape[1]
         else make_grid(harmonics=grid_or_harmonics, n_max=load_model_parameters.signature.n_max)
     )
     surface = surface_ponderation(
-        mask=mask
-        * (
-            numpy.abs(grid)
-            < (
-                signal_threshold
-                if signal_threshold
-                else load_model_parameters.numerical_parameters.signal_threshold
-            )
-        ),
+        mask=mask * (numpy.abs(grid) < ewh_threshold),
         latitudes=latitudes,
     )
     return numpy.round(

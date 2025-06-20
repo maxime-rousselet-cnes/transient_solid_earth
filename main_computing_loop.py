@@ -6,8 +6,6 @@ III - Self-coherent anelastic load re-estimation for all elastic loads and rheol
 """
 
 import os
-import shutil
-from pathlib import Path
 
 import numpy
 
@@ -15,8 +13,8 @@ from transient_solid_earth import (
     SolidEarthModelPart,
     adaptative_step_parallel_computing_loop,
     anelastic_load_model_re_estimation_processing_loop,
+    clear_path,
     create_all_model_variations,
-    elastic_load_models_path,
     elastic_polar_tide_correction_back,
     generate_degrees_list,
     generate_elastic_load_models_parallel_loop,
@@ -25,25 +23,13 @@ from transient_solid_earth import (
     interpolated_love_numbers_path,
     load_complex_array,
     load_parameters,
+    loads_path,
     logs_subpaths,
     tables_path,
 )
 
-CLEAR = {
-    "love_numbers": False,
-    "generate_elastic_load_models": False,
-    "interpolate_love_numbers": False,
-}
-CLEAR_TABLES = CLEAR["generate_elastic_load_models"]
-
-
-def clear_path(path: Path) -> None:
-    """
-    Clears the given path if it exists.
-    """
-
-    if path.exists():
-        shutil.rmtree(path)
+CLEAR = {"love_numbers": False, "generate_elastic_load_models": False}
+CLEAR["interpolate_love_numbers"] = CLEAR["generate_elastic_load_models"]
 
 
 if __name__ == "__main__":
@@ -52,10 +38,9 @@ if __name__ == "__main__":
     for path_to_clear, to_clear in CLEAR.items():
         if to_clear and logs_subpaths[path_to_clear].exists():
             clear_path(path=logs_subpaths[path_to_clear])
-    if CLEAR_TABLES:
+    if CLEAR["generate_elastic_load_models"]:
         clear_path(path=tables_path)
-        if CLEAR["generate_elastic_load_models"]:
-            clear_path(path=elastic_load_models_path)
+        clear_path(path=loads_path)
 
     # Loads parameters and rheological models.
     parameters = load_parameters()
@@ -74,11 +59,11 @@ if __name__ == "__main__":
     ) = get_period_interpolation_basis(parameters=parameters)
 
     # Pre/Post-interpolation degrees for Love numbers.
-    degree_new_values = numpy.arange(start=1, stop=parameters.load.model.signature.n_max)
+    degree_new_values = numpy.arange(stop=parameters.load_model.signature.n_max) + 1
     degree_list = generate_degrees_list(
         degree_thresholds=parameters.solid_earth.degree_discretization.thresholds,
         degree_steps=parameters.solid_earth.degree_discretization.steps,
-        n_max=parameters.load.model.signature.n_max,
+        n_max=parameters.load_model.signature.n_max,
     )
 
     # Loops on elastic rheologies. Usually, PREM only.
@@ -137,6 +122,7 @@ if __name__ == "__main__":
                     elastic_love_numbers=elastic_love_numbers,
                     periods_id=periods_id,
                     rheological_model_id=rheological_model_id,
+                    parallel_computing_parameters=parameters.parallel_computing,
                 )
 
     # Wait for processes to end naturally.

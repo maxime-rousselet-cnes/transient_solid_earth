@@ -1,5 +1,5 @@
 """
-Needed classes to describe a load signal.
+Needed classes to describe a load model (EWH; mm/yr) and its associated products.
 """
 
 import dataclasses
@@ -45,7 +45,7 @@ class ElasticLoadModelSpatialProducts(BaseModel):
         return self
 
 
-class ElasticLoadModelTemporalProducts(BaseModel):
+class TemporalProducts(BaseModel):
     """
     Temporal products of an elastic load model, needed for anelastic re-estimation.
     """
@@ -73,14 +73,12 @@ class ElasticLoadModelTemporalProducts(BaseModel):
         return self
 
 
-class ElasticLoadModelBaseProducts(BaseModel):
+class BaseProducts(BaseModel):
     """
     Base products of an elastic load model, needed for anelastic re-estimation.
     """
 
-    elastic_load_model_temporal_products: ElasticLoadModelTemporalProducts = (
-        ElasticLoadModelTemporalProducts()
-    )
+    temporal_products: TemporalProducts = TemporalProducts()
     load_model_harmonic_component: numpy.ndarray | list = numpy.zeros(shape=())
     # (yr) := (mm) / (mm/yr).
     time_dependent_component: numpy.ndarray | list = numpy.zeros(shape=())
@@ -104,7 +102,7 @@ class ElasticLoadModelBaseProducts(BaseModel):
         return self
 
 
-class ElasticLoadModelSideProducts(BaseModel):
+class SideProducts(BaseModel):
     """
     Side products of an elastic load model, needed for anelastic re-estimation.
     """
@@ -143,8 +141,8 @@ class ElasticLoadModel(BaseModel):
     elastic_load_model_spatial_products: ElasticLoadModelSpatialProducts = (
         ElasticLoadModelSpatialProducts()
     )
-    elastic_load_model_base_products: ElasticLoadModelBaseProducts = ElasticLoadModelBaseProducts()
-    elastic_load_model_side_products: ElasticLoadModelSideProducts = ElasticLoadModelSideProducts()
+    base_products: BaseProducts = BaseProducts()
+    side_products: SideProducts = SideProducts()
     load_model_parameters: LoadModelParameters = DEFAULT_LOAD_MODEL_PARAMETERS
 
     @dataclasses.dataclass

@@ -240,7 +240,7 @@ def generate_load_model_variations(
     load_model_parameters: LoadModelParameters, load_model_variabilities: dict[str, Any]
 ) -> list[LoadModelParameters]:
     """
-    Creates all possible variations of load signal model parameters.
+    Creates all possible variations of load model parameters.
     """
 
     paths_and_values = extract_parameter_paths(load_model_variabilities)

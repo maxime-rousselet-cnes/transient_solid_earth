@@ -17,7 +17,7 @@ class Direction(Enum):
     Love numbers directions.
     """
 
-    RADIAL = 0
+    VERTICAL = 0
     TANGENTIAL = 1
     POTENTIAL = 2
 
@@ -69,13 +69,9 @@ MEAN_POLE_T_0 = {
 METERS_TO_MILLIMETERS = 1000
 STOKES_TO_EWH_CONSTANT = 5.0 / 3.0 / DENSITY_RATIO * EARTH_RADIUS * METERS_TO_MILLIMETERS
 
-M_1_GIA_TREND = 0.62 * MILLI_ARC_SECOND_TO_RADIANS  # (mas/yr) -> rad.
-M_2_GIA_TREND = 3.48 * MILLI_ARC_SECOND_TO_RADIANS  # (mas/yr) -> rad.
 K_2_BASE = 0.3077 + 0.0036j
 K_2_PRIME_BASE = 0.30523
 
-M_1_TREND = MEAN_POLE_COEFFICIENTS["IERS_2018_update"]["m_1"][1]
-M_2_TREND = -MEAN_POLE_COEFFICIENTS["IERS_2018_update"]["m_2"][1]
 
 # Universal Gravitationnal constant (m^3.kg^-1.s^-2).
 G = 6.67430e-11

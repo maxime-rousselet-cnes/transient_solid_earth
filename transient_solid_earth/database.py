@@ -9,6 +9,7 @@ from time import sleep
 from typing import Any, Optional, Union
 
 import numpy
+from pandas import read_csv
 from pydantic import BaseModel
 
 from .paths import tables_path
@@ -72,9 +73,9 @@ def load_complex_array(path: Path, name: Optional[str] = None) -> numpy.ndarray:
     """
 
     path = path if not name else path.joinpath(name)
-    return numpy.array(object=load_base_model(name="real", path=path)) + 1.0j * numpy.array(
-        object=load_base_model(name="imag", path=path)
-    )
+    return numpy.array(object=load_base_model(name="real", path=path)).astype(
+        numpy.complex64
+    ) + 1.0j * numpy.array(object=load_base_model(name="imag", path=path)).astype(numpy.complex64)
 
 
 def save_complex_array(
@@ -148,6 +149,22 @@ def extract_terminal_attributes(obj: Any, prefix: str = "") -> Union[dict, Any]:
         return result
 
     return obj
+
+
+def is_in_table(table_name: str, id_to_check: str) -> bool:
+    """
+    Verify if a given ID is in a (.CSV) table.
+    """
+
+    file = tables_path.joinpath(table_name + ".csv")
+
+    if file.exists():
+
+        df = read_csv(file)
+
+        return id_to_check in df["ID"]
+
+    return False
 
 
 def add_result_to_table(table_name: str, dictionary: dict[str, str | bool | float]) -> None:

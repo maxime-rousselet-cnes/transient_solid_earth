@@ -13,6 +13,7 @@ from copy import deepcopy
 from functools import partial
 from itertools import islice
 from multiprocessing import cpu_count, get_context
+from time import sleep
 from typing import Iterable, Optional
 
 from .database import save_base_model
@@ -33,7 +34,9 @@ def chunked(iterable: Iterable, size: int) -> Iterable:
     """
 
     it = iter(iterable)
+
     while chunk := list(islice(it, size)):
+
         yield chunk
 
 
@@ -53,6 +56,7 @@ def submit_local_jobs(
     """
     Local parallel processing.
     """
+
     flat_worker_infos = sum(job_array_worker_informations, [])
     submit_fn = partial(submit_local_job, function_name)  # Partially applies the function name.
 
@@ -63,6 +67,7 @@ def submit_local_jobs(
         ),
         mp_context=get_context("fork"),
     ) as executor:
+
         list(executor.map(submit_fn, flat_worker_infos))
 
 
@@ -74,14 +79,19 @@ def is_slurm_available() -> bool:
     slurm_path = shutil.which("sbatch")
 
     if not slurm_path:
+
         return False
 
     try:
+
         result = subprocess.run(
             ["scontrol", "ping"], capture_output=True, text=True, timeout=2.0, check=True
         )
+
         return "Slurmctld" in result.stdout and "responding" in result.stdout
+
     except (subprocess.SubprocessError, FileNotFoundError, subprocess.CalledProcessError):
+
         return False
 
 
@@ -160,8 +170,11 @@ class ProcessCatalog:
         """
 
         if (model_id, fixed_parameter) in self.in_process:
+
             self.in_process[(model_id, fixed_parameter)].add(variable_parameter)
+
         else:
+
             self.in_process[(model_id, fixed_parameter)] = set([variable_parameter])
 
     def run_job_array(
@@ -176,9 +189,11 @@ class ProcessCatalog:
         def thread_target():
 
             with self.job_array_watcher.i_job_array_lock:
+
                 i_job_array_snapshot = self.job_array_watcher.i_job_array
 
             with self.thread_semaphore:  # Limits concurent threads.
+
                 if self.slurm:
 
                     # Writes worker informations in files so that separate jobs can read them.
@@ -213,6 +228,7 @@ class ProcessCatalog:
 
         thread = threading.Thread(target=thread_target, daemon=True)
         thread.start()
+
         return thread
 
     def schedule_jobs(self) -> None:
@@ -234,6 +250,7 @@ class ProcessCatalog:
         ]
 
         for model_id, fixed_parameter, variable_parameter in jobs:
+
             self.update_in_process(
                 model_id=model_id,
                 fixed_parameter=fixed_parameter,
@@ -255,6 +272,7 @@ class ProcessCatalog:
         )
 
         with self.job_array_watcher.i_job_array_lock:
+
             self.job_array_watcher.i_job_array += 1
 
     def wait(self, timeout: Optional[float] = None) -> None:
@@ -263,9 +281,13 @@ class ProcessCatalog:
         """
 
         if not timeout:
+
             timeout = self.parallel_computing_parameters.timeout
+
         for thread in self.threads:
+
             if thread.is_alive():
+
                 thread.join(timeout=timeout)
 
     def wait_for_jobs(self, timeout: Optional[float] = None) -> None:
@@ -280,8 +302,10 @@ class ProcessCatalog:
             while len(performed) < len(self.in_process):
 
                 performed = list(elastic_load_models_path.glob("*.json"))
+                sleep(self.parallel_computing_parameters.timeout)
 
             self.wait(timeout=timeout)
+
             return
 
         while self.in_process:
@@ -305,7 +329,9 @@ class ProcessCatalog:
 
                 else:
 
-                    path = intermediate_result_subpaths[self.function_name].joinpath(model_id)
+                    path = intermediate_result_subpaths[self.function_name].joinpath(
+                        model_id.split("/")[-1]
+                    )
 
                     if path.exists():
 

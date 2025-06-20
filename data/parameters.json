@@ -45,80 +45,71 @@
             "overwrite_model": false
         }
     },
-    "load": {
-        "save_options": {
-            "json_harmonics": {
-                "all": true,
-                "step_1": false,
-                "step_2": false,
-                "step_3": false,
-                "step_4": false,
-                "step_5": false,
-                "inversion_components": false
+    "load_model": {
+        "numerical_parameters": {
+            "leakage_correction_iterations": 1,
+            "renormalize_recent_trend": true,
+            "initial_past_trend_factor": 1.22,
+            "anti_Gibbs_effect_factor": 1,
+            "spline_time_years": 50,
+            "initial_plateau_date": -500,
+            "ewh_threshold": 12.0,
+            "ewh_threshold_past": 6.0,
+            "mean_ewh_threshold": null,
+            "mean_ewh_threshold_past": null,
+            "ddk_filter_level": 5,
+            "ocean_mask": "IMERG_land_sea_mask.nc",
+            "continents": "geopandas-continents.zip",
+            "buffer_distance": 300,
+            "first_year_for_recent_trend": 2003,
+            "last_year_for_recent_trend": 2023,
+            "first_year_for_past_trend": 1900,
+            "last_year_for_past_trend": 2003,
+            "past_trend_error": 1e-3
+        },
+        "history": {
+            "file": "global_basin_timeseries.csv",
+            "start_date": 1900,
+            "case": "mean",
+            "pole": {
+                "use": true,
+                "file": "pole",
+                "mean_pole_convention": "IERS_2018_update",
+                "case": "mean",
+                "pole_secular_term_trend_start_date": 1900,
+                "pole_secular_term_trend_end_date": 1978,
+                "ramp": false,
+                "filter_wobble": true,
+                "remove_mean_pole": true,
+                "wobble_filtering_kernel_length": 50
             },
-            "binary_harmonics": {
-                "all": true,
-                "step_1": false,
-                "step_2": false,
-                "step_3": false,
-                "step_4": false,
-                "step_5": false,
-                "inversion_components": false
+            "lia": {
+                "use": false,
+                "end_date": 1400,
+                "time_years": 100,
+                "amplitude_effect": 0.25
             }
         },
-        "model": {
-            "numerical_parameters": {
-                "leakage_correction_iterations": 1,
-                "renormalize_recent_trend": true,
-                "initial_past_trend_factor": 1.22,
-                "anti_Gibbs_effect_factor": 1,
-                "spline_time_years": 50,
-                "initial_plateau_date": -1000,
-                "signal_threshold": 12.0,
-                "signal_threshold_past": 6.0,
-                "mean_signal_threshold": null,
-                "mean_signal_threshold_past": null,
-                "ddk_filter_level": 5,
-                "ocean_mask": "IMERG_land_sea_mask.nc",
-                "continents": "geopandas-continents.zip",
-                "buffer_distance": 300,
-                "first_year_for_recent_trend": 2003,
-                "last_year_for_recent_trend": 2023,
-                "first_year_for_past_trend": 1900,
-                "last_year_for_past_trend": 2003,
-                "past_trend_error": 1e-3
-            },
-            "history": {
-                "file": "global_basin_timeseries.csv",
-                "start_date": 1900,
-                "case": "mean",
-                "pole": {
-                    "use": true,
-                    "file": "pole",
-                    "mean_pole_convention": "IERS_2018_update",
-                    "case": "mean",
-                    "pole_secular_term_trend_start_date": 1900,
-                    "pole_secular_term_trend_end_date": 1978,
-                    "ramp": false,
-                    "filter_wobble": true,
-                    "remove_mean_pole": true,
-                    "wobble_filtering_kernel_length": 50
-                },
-                "lia": {
-                    "use": false,
-                    "end_date": 1400,
-                    "time_years": 100,
-                    "amplitude_effect": 0.25
+        "signature": {
+            "opposite_load_on_continents": false,
+            "n_max": 90,
+            "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+        },
+        "options": {
+            "compute_residuals": true,
+            "invert_for_J2": true,
+            "save_options": {
+                "json_harmonics": {
+                    "all": true,
+                    "steps": [
+                        false,
+                        false,
+                        false,
+                        false,
+                        false
+                    ],
+                    "inversion_components": false
                 }
-            },
-            "signature": {
-                "opposite_load_on_continents": false,
-                "n_max": 89,
-                "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
-            },
-            "options": {
-                "compute_residuals": false,
-                "invert_for_J2": false
             }
         }
     },
@@ -148,16 +139,6 @@
     },
     "load_model_variabilities": {
         "history": {
-            "case": [
-                "mean",
-                "lower"
-            ],
-            "pole": {
-                "case": [
-                    "mean",
-                    "lower"
-                ]
-            },
             "lia": {
                 "use": [
                     false,
@@ -166,10 +147,6 @@
             }
         },
         "signature": {
-            "opposite_load_on_continents": [
-                false,
-                true
-            ],
             "file": [
                 "GFZ",
                 "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
@@ -180,6 +157,7 @@
         "job_array_max_file_size": 1000,
         "max_concurrent_threads_factor": 4,
         "max_concurrent_processes_factor": 4,
+        "degree_one_inversion_chunks": 64,
         "timeout": 0.1
     },
     "discretization": {

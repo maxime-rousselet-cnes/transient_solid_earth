@@ -1,10 +1,11 @@
 """
-Describes the loop for interpolation on the wanted axes for all considered rheologies.
+Describes the loop for generation of elastic load models.
 """
 
+from shutil import rmtree
 from typing import Optional
 
-from .database import add_result_to_table, extract_terminal_attributes, save_base_model
+from .database import save_base_model
 from .model_list_generation import generate_load_model_variations
 from .parameters import DEFAULT_PARAMETERS, LoadModelParameters, Parameters
 from .paths import elastic_load_model_parameters_subpath
@@ -13,7 +14,7 @@ from .process_catalog import ProcessCatalog
 
 class GenerateElasticLoadModelProcessCatalog(ProcessCatalog):
     """
-    Memorizes all interpolation processes to runand schedule them.
+    Memorizes all interpolation processes to run and schedule them.
     """
 
     def __init__(
@@ -32,17 +33,15 @@ class GenerateElasticLoadModelProcessCatalog(ProcessCatalog):
 
         for load_model in load_model_variations:
 
-            load_model_line = extract_terminal_attributes(obj=load_model)
-            load_model_line["ID"] = load_model.model_id()
-            add_result_to_table(table_name="elastic_load_models", dictionary=load_model_line)
+            model_id = load_model.model_id()
             save_base_model(
                 obj=load_model,
-                name=load_model_line["ID"],
+                name=model_id,
                 path=elastic_load_model_parameters_subpath,
             )
             self.to_process.add(
                 (
-                    load_model_line["ID"],
+                    model_id,
                     # Only needs the model ID for this parallelization.
                     0.0,
                     0.0,
@@ -60,7 +59,7 @@ def generate_elastic_load_models_parallel_loop(
 
     # Generates load model parameter variations.
     load_model_variations = generate_load_model_variations(
-        load_model_parameters=parameters.load.model,
+        load_model_parameters=parameters.load_model,
         load_model_variabilities=parameters.load_model_variabilities,
     )
 
@@ -74,3 +73,5 @@ def generate_elastic_load_models_parallel_loop(
 
     # Waits for the jobs to finish.
     process_catalog.wait_for_jobs(timeout=timeout)
+
+    rmtree(path=elastic_load_model_parameters_subpath)

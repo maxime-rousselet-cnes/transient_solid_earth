@@ -6,8 +6,8 @@ import numpy
 from scipy.fft import fft, ifft
 
 from .constants import PHI_CONSTANT, STOKES_TO_EWH_CONSTANT, BoundaryCondition, Direction
-from .functions import trend
-from .load_signal_model import ElasticLoadModel
+from .elastic_load_models import ElasticLoadModel
+from .trends import get_trend_from_complex_signal
 
 
 def polar_motion_correction(
@@ -25,35 +25,21 @@ def polar_motion_correction(
     # Gets element in position 1 for degree 2. Solid Earth (SE) Polar Tide (PT).
     phi_se_pt_complex: numpy.ndarray[complex] = (
         -PHI_CONSTANT
-        * love_numbers[1, :, BoundaryCondition.POETENTIAL.value, Direction.POTENTIAL.value]
+        * love_numbers[:, 1, BoundaryCondition.POETENTIAL.value, Direction.POTENTIAL.value]
         * (frequencial_m1 - 1.0j * frequencial_m2)
     )
 
     # C_PT_SE_2_1, S_PT_SE_2_1.
     stokes_to_ewh_factor = STOKES_TO_EWH_CONSTANT / (
-        1.0 + love_numbers[1, :, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
+        1.0 + love_numbers[:, 1, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
     )  # Divides by 1 + k'.
 
-    coherent_polar_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=complex)
+    coherent_polar_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=numpy.complex64)
 
     return (
         -stokes_to_ewh_factor * fft(coherent_polar_motion.real),  # C_2_1 frequencial correction.
         stokes_to_ewh_factor * fft(coherent_polar_motion.imag),  # S_2_1 frequencial correction.
     )
-
-
-def get_trend_from_complex_signal(
-    signal: numpy.ndarray, trend_indices: numpy.ndarray[int], dates: numpy.ndarray[float]
-) -> float:
-    """
-    Gets the trend from a Fourier transformed signal.
-    """
-
-    result, _ = trend(
-        trend_dates=dates[trend_indices],
-        signal=numpy.array(object=ifft(signal)).real[trend_indices],
-    )
-    return result
 
 
 def elastic_polar_tide_correction_back(
@@ -65,18 +51,16 @@ def elastic_polar_tide_correction_back(
     """
 
     c_2_1_elastic_polar_tide, s_2_1_elastic_polar_tide = polar_motion_correction(
-        m_1=elastic_load_model.elastic_load_model_side_products.time_dependent_m_1,
-        m_2=elastic_load_model.elastic_load_model_side_products.time_dependent_m_2,
+        m_1=elastic_load_model.side_products.time_dependent_m_1,
+        m_2=elastic_load_model.side_products.time_dependent_m_2,
         love_numbers=elastic_love_numbers,
     )
-    base_products = elastic_load_model.elastic_load_model_base_products
-    base_products.load_model_harmonic_component[0, 2, 1] += get_trend_from_complex_signal(
+    base_products = elastic_load_model.base_products
+    base_products.load_model_harmonic_component[2, 1] += get_trend_from_complex_signal(
         signal=c_2_1_elastic_polar_tide,
-        trend_indices=elastic_load_model.elastic_load_model_side_products.recent_trend_indices,
-        dates=base_products.elastic_load_model_temporal_products.full_load_model_dates,
+        elastic_load_model=elastic_load_model,
     )
-    base_products.load_model_harmonic_component[1, 2, 1] += get_trend_from_complex_signal(
+    base_products.load_model_harmonic_component[-3, -2] += get_trend_from_complex_signal(
         signal=s_2_1_elastic_polar_tide,
-        trend_indices=elastic_load_model.elastic_load_model_side_products.recent_trend_indices,
-        dates=base_products.elastic_load_model_temporal_products.full_load_model_dates,
+        elastic_load_model=elastic_load_model,
     )

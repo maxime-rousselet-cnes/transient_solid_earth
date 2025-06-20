@@ -79,7 +79,7 @@ def worker_interpolate_love_numbers(worker_information: WorkerInformation) -> No
                     )(x=numpy.log(numpy.abs(period_new_values)) / exponentiation_scale)
                     # To get hermitian.
                     + 1.0j
-                    * numpy.sign(period_new_values)[:, numpy.newaxis, numpy.newaxis]
+                    * numpy.sign(period_new_values)[:, None, None]
                     * interpolate.interp1d(
                         x=numpy.log(periods[degree]) / exponentiation_scale,
                         y=inputs[degree].imag,
@@ -91,20 +91,25 @@ def worker_interpolate_love_numbers(worker_information: WorkerInformation) -> No
 
     # Interpolates on degrees.
     save_complex_array(
-        obj=interpolate.interp1d(
-            x=degrees,
-            y=numpy.array(object=numpy.real(interpolated_on_periods))
-            * generate_n_factor(degrees=degrees),
-            axis=0,
-        )(x=degree_new_values)
-        / generate_n_factor(degrees=degree_new_values)
-        + 1.0j
-        * interpolate.interp1d(
-            x=degrees,
-            y=numpy.array(object=numpy.imag(interpolated_on_periods))
-            * generate_n_factor(degrees=degrees),
-            axis=0,
-        )(x=degree_new_values)
-        / generate_n_factor(degrees=degree_new_values),
+        obj=numpy.array(
+            object=interpolate.interp1d(
+                x=degrees,
+                y=numpy.array(object=numpy.real(interpolated_on_periods))
+                * generate_n_factor(degrees=degrees),
+                axis=0,
+            )(x=degree_new_values)
+            / generate_n_factor(degrees=degree_new_values)
+            + 1.0j
+            * interpolate.interp1d(
+                x=degrees,
+                y=numpy.array(object=numpy.imag(interpolated_on_periods))
+                * generate_n_factor(degrees=degrees),
+                axis=0,
+            )(x=degree_new_values)
+            / generate_n_factor(degrees=degree_new_values),
+            dtype=numpy.complex64,
+        ).transpose(
+            (1, 0, 2, 3)
+        ),  # (periods, degrees, boundary conditions, directions).
         path=save_path,
     )

@@ -57,30 +57,35 @@ love_numbers_path = outputs_path.joinpath("love_numbers")
 ### Load numerical models.
 loads_path = outputs_path.joinpath("loads")
 
-#### Input load signal numerical models.
-elastic_load_models_path = loads_path.joinpath("elastic_load_models_path")
+#### Input load numerical models.
+elastic_load_models_path = loads_path.joinpath("elastic_load_models")
 
-#### Output load signal trends.
-anelastic_load_model_trends_path = loads_path.joinpath("anelastic_load_model_trends_path")
+#### Output load model trends.
+anelastic_load_model_trends_path = loads_path.joinpath("anelastic_load_model_trends")
 
-##### Anelastic load signals.
 anelastic_pole_motion_path = anelastic_load_model_trends_path.joinpath("pole_motions")
 
 ##### Degree one inversion components.
-harmonic_geoid_trends_path = anelastic_load_model_trends_path.joinpath("geoids")
-harmonic_radial_displacement_trends_path = anelastic_load_model_trends_path.joinpath(
-    "radial_displacements"
+harmonic_geoid_deformation_trends_path = anelastic_load_model_trends_path.joinpath(
+    "geoid_deformations"
+)
+harmonic_vertical_displacement_trends_path = anelastic_load_model_trends_path.joinpath(
+    "vertical_displacements"
 )
 harmonic_residual_trends_path = anelastic_load_model_trends_path.joinpath("residuals")
 
-##### Anelastic load signals.
-anelastic_load_signals_path = anelastic_load_model_trends_path.joinpath("load_models")
+anelastic_load_models_path = anelastic_load_model_trends_path.joinpath("load_models")
 
 ### SLURM logs.
 logs_path = outputs_path.joinpath("logs")
 
 #### Love numbers job array logs.
-sub_paths = ["love_numbers", "interpolate_love_numbers", "generate_elastic_load_models"]
+sub_paths = [
+    "love_numbers",
+    "interpolate_love_numbers",
+    "generate_elastic_load_models",
+    "invert_degree_one",
+]
 logs_subpaths = {sub_path: logs_path.joinpath(sub_path) for sub_path in sub_paths}
 
 
