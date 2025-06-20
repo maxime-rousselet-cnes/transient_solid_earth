@@ -105,18 +105,131 @@ def make_low_degree_polynomials(ocean_mask_indices: numpy.ndarray, n_max: int) -
     return low_degrees_polynomials
 
 
+class ParallelDegreOneInversionChunkResult:
+    """
+    Defines what is returned by a degree one inversion process.
+    """
+
+    invert_for_j_2: bool
+    n_max: int
+
+    period_dependent_degree_one: numpy.ndarray  # Contains c_1_0, c_1_1 and s_1_1.
+    j_2: Optional[numpy.ndarray]
+    period_dependent_geoid_deformation: numpy.ndarray
+    period_dependent_vertical_displacement: numpy.ndarray
+    residuals: Optional[numpy.ndarray]
+
+    def __init__(
+        self,
+        period_dependent_harmonic_load_model_chunk: numpy.ndarray,
+        love_numbers_chunk: numpy.ndarray,
+        elastic_load_model: ElasticLoadModel,
+        n_chunk: int,
+    ):
+
+        self.invert_for_j_2 = elastic_load_model.load_model_parameters.options.invert_for_j_2
+        self.n_max = elastic_load_model.load_model_parameters.signature.n_max
+
+        self.period_dependent_degree_one = numpy.zeros((n_chunk, 2, 2), dtype=numpy.complex64)
+        self.j_2 = None if not self.invert_for_j_2 else numpy.zeros(n_chunk, dtype=numpy.complex64)
+        degrees = numpy.arange(stop=self.n_max + 1, dtype=numpy.int32)
+        self.period_dependent_geoid_deformation = period_dependent_high_degrees_component(
+            period_dependent_harmonic_load_model=period_dependent_harmonic_load_model_chunk,
+            love_numbers=love_numbers_chunk,
+            degrees=degrees,
+        )
+        self.period_dependent_vertical_displacement = period_dependent_high_degrees_component(
+            period_dependent_harmonic_load_model=period_dependent_harmonic_load_model_chunk,
+            love_numbers=love_numbers_chunk,
+            degrees=degrees,
+            direction=Direction.VERTICAL,
+        )
+        self.residuals = (
+            None
+            if not elastic_load_model.load_model_parameters.options.compute_residuals
+            else numpy.zeros(
+                period_dependent_harmonic_load_model_chunk.shape, dtype=numpy.complex64
+            )
+        )
+
+    def update(
+        self,
+        i_period: int,
+        solution_vector: numpy.ndarray,
+        grid: numpy.ndarray,
+    ) -> None:
+        """
+        Processes the degree one inversion results for a single period.
+        """
+
+        self.period_dependent_degree_one[i_period, :, :] = numpy.array(
+            [[solution_vector[0, 0], solution_vector[1, 0]], [0.0, solution_vector[2, 0]]],
+            dtype=numpy.complex64,
+        )
+
+        if self.invert_for_j_2:
+
+            self.j_2[i_period] = solution_vector[4, 0]
+
+        if not grid is None:
+
+            self.residuals[i_period, :, :] = make_harmonics(grid=grid, n_max=self.n_max)
+
+    def stack_components(self, love_numbers_chunk: numpy.ndarray) -> None:
+        """
+        Prepares the degree one inversion components to be returned in a compact form.
+        """
+
+        self.period_dependent_geoid_deformation[:, :, 1, :2] = (
+            DENSITY_RATIO
+            * (
+                1.0
+                + love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
+            )
+            * self.period_dependent_degree_one
+        )
+        self.period_dependent_vertical_displacement[:, :, 1, :2] = (
+            DENSITY_RATIO
+            * love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.VERTICAL.value]
+            * self.period_dependent_degree_one
+        )
+
+        if self.invert_for_j_2:
+
+            self.period_dependent_geoid_deformation[:, 0, 2, 0] = (
+                3
+                / 5
+                * DENSITY_RATIO
+                * (
+                    1.0
+                    + love_numbers_chunk[
+                        :, 1, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value
+                    ]
+                )
+                * self.j_2
+            )
+            self.period_dependent_vertical_displacement[:, 0, 2, 0] = (
+                3
+                / 5
+                * DENSITY_RATIO
+                * love_numbers_chunk[:, 1, BoundaryCondition.LOAD.value, Direction.VERTICAL.value]
+                * self.j_2
+            )
+
+        self.period_dependent_geoid_deformation = stack_period_dependent_harmonics(
+            self.period_dependent_geoid_deformation
+        )
+        self.period_dependent_vertical_displacement = stack_period_dependent_harmonics(
+            self.period_dependent_vertical_displacement
+        )
+
+
 def parallel_period_dependent_degree_one_inversion(
     period_dependent_harmonic_load_model_chunk: numpy.ndarray,
     love_numbers_chunk: numpy.ndarray,
     elastic_load_model: ElasticLoadModel,
     harmonic_load_model_trend: numpy.ndarray,
-) -> tuple[
-    numpy.ndarray,  # Contains c_1_0, c_1_1 and s_1_1.
-    Optional[numpy.ndarray],
-    numpy.ndarray,
-    numpy.ndarray,
-    Optional[numpy.ndarray],
-]:
+) -> ParallelDegreOneInversionChunkResult:
     """
     Degree one inversion job for a chunk of the load model, parallelized over periods.
     """
@@ -143,6 +256,7 @@ def parallel_period_dependent_degree_one_inversion(
     ).astype(numpy.complex64)
 
     if elastic_load_model.load_model_parameters.options.compute_residuals:
+
         lat_idx = numpy.arange(
             len(elastic_load_model.elastic_load_model_spatial_products.latitudes), dtype=numpy.int32
         )
@@ -153,28 +267,24 @@ def parallel_period_dependent_degree_one_inversion(
         lat_mesh, lon_mesh = numpy.meshgrid(lat_idx, lon_idx, indexing="ij")
         lat_mesh_ocean = lat_mesh.flatten()[ocean_mask_indices]
         lon_mesh_ocean = lon_mesh.flatten()[ocean_mask_indices]
+        grid = numpy.zeros(lat_mesh.shape, dtype=numpy.complex64)
 
-    degrees = numpy.arange(
-        stop=elastic_load_model.load_model_parameters.signature.n_max + 1, dtype=numpy.int32
-    )
+    else:
 
-    # Compute geoid deformation and vertical displacement.
-    period_dependent_geoid_deformation = period_dependent_high_degrees_component(
-        period_dependent_harmonic_load_model=period_dependent_harmonic_load_model_chunk,
-        love_numbers=love_numbers_chunk,
-        degrees=degrees,
-    )
+        grid = None
 
-    period_dependent_vertical_displacement = period_dependent_high_degrees_component(
-        period_dependent_harmonic_load_model=period_dependent_harmonic_load_model_chunk,
-        love_numbers=love_numbers_chunk,
-        degrees=degrees,
-        direction=Direction.VERTICAL,
+    n_chunk = period_dependent_harmonic_load_model_chunk.shape[0]
+
+    result = ParallelDegreOneInversionChunkResult(
+        period_dependent_harmonic_load_model_chunk=period_dependent_harmonic_load_model_chunk,
+        love_numbers_chunk=love_numbers_chunk,
+        elastic_load_model=elastic_load_model,
+        n_chunk=n_chunk,
     )
 
     period_dependent_right_hand_side = (
-        period_dependent_geoid_deformation
-        - period_dependent_vertical_displacement
+        result.period_dependent_geoid_deformation
+        - result.period_dependent_vertical_displacement
         - unstack_period_dependent_harmonics(
             dense_period_dependent_harmonics=period_dependent_harmonic_load_model_chunk
         )
@@ -185,8 +295,7 @@ def parallel_period_dependent_degree_one_inversion(
         n_max=elastic_load_model.load_model_parameters.signature.n_max,
     )
 
-    invert_for_j2 = elastic_load_model.load_model_parameters.options.invert_for_J2
-    n_chunk = period_dependent_harmonic_load_model_chunk.shape[0]
+    invert_for_j_2 = elastic_load_model.load_model_parameters.options.invert_for_j_2
 
     # Precompute basis vectors for stacking along last axis
     basis_vectors = [
@@ -196,41 +305,20 @@ def parallel_period_dependent_degree_one_inversion(
         numpy.ones(n_chunk, dtype=numpy.complex64),
     ]
 
-    if invert_for_j2:
-
-        basis_vectors.append(-period_dependent_right_hand_side[:, 0, 2, 0].astype(numpy.complex64))
-
-    period_dependent_left_hand_side = (
-        least_square_weights[None, :]
-        * low_degrees_polynomials[: 5 if invert_for_j2 else 4, :]  # (1, n_points, n_poly)
-    ).T[None, :, :] * numpy.array(basis_vectors).T[
-        :, None, :  # (n_chunk, 1, n_poly).
-    ]  # (n_chunk, n_points, n_poly)
-
     # Resets degree 1 harmonics in right hand side to zero.
     period_dependent_right_hand_side[:, :, :2, :] = 0.0
 
-    period_dependent_degree_one = numpy.zeros((n_chunk, 2, 2), dtype=numpy.complex64)
+    if invert_for_j_2:
 
-    if invert_for_j2:
+        basis_vectors.append(-period_dependent_right_hand_side[:, 0, 2, 0].astype(numpy.complex64))
+        period_dependent_right_hand_side[:, 0, 2, 0] = 0.0
 
-        period_dependent_right_hand_side[:, 0, 2, 0] = 0.0  # Try without
-        j_2 = numpy.zeros(n_chunk, dtype=numpy.complex64)
-
-    else:
-
-        j_2 = None
-
-    if elastic_load_model.load_model_parameters.options.compute_residuals:
-
-        residuals = numpy.zeros(
-            period_dependent_harmonic_load_model_chunk.shape, dtype=numpy.complex64
-        )
-        grid = numpy.zeros(lat_mesh.shape, dtype=numpy.complex64)
-
-    else:
-
-        residuals = None
+    period_dependent_left_hand_side = (
+        least_square_weights[None, :]
+        * low_degrees_polynomials[: 5 if invert_for_j_2 else 4, :]  # (1, n_points, n_poly)
+    ).T[None, :, :] * numpy.array(basis_vectors).T[
+        :, None, :  # (n_chunk, 1, n_poly).
+    ]  # (n_chunk, n_points, n_poly)
 
     left_hand_side: numpy.ndarray
     harmonic_right_hand_side: numpy.ndarray
@@ -256,67 +344,63 @@ def parallel_period_dependent_degree_one_inversion(
         # Solves the least squares.
         solution_vector, _, _, _ = lstsq(left_hand_side, right_hand_side)
 
-        period_dependent_degree_one[i_period, :, :] = numpy.array(
-            [[solution_vector[0, 0], solution_vector[1, 0]], [0.0, solution_vector[2, 0]]],
-            dtype=numpy.complex64,
-        )
-
-        if invert_for_j2:
-
-            j_2[i_period] = solution_vector[4, 0]
-
         if elastic_load_model.load_model_parameters.options.compute_residuals:
 
             grid[lat_mesh_ocean, lon_mesh_ocean] = (
                 left_hand_side @ solution_vector - right_hand_side
             ).flatten()
-            residuals[i_period, :, :] = make_harmonics(
-                grid=grid, n_max=elastic_load_model.load_model_parameters.signature.n_max
-            )
+
+        result.update(i_period=i_period, solution_vector=solution_vector, grid=grid)
 
     # Post-process degree one inversion components.
-    period_dependent_geoid_deformation[:, :, 1, :2] = (
-        DENSITY_RATIO
-        * (1.0 + love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value])
-        * period_dependent_degree_one
-    )
-    period_dependent_vertical_displacement[:, :, 1, :2] = (
-        DENSITY_RATIO
-        * love_numbers_chunk[:, 0, BoundaryCondition.LOAD.value, Direction.VERTICAL.value]
-        * period_dependent_degree_one
+    result.stack_components(love_numbers_chunk=love_numbers_chunk)
+
+    return result
+
+
+def stack_parallel_degree_one_inversion_results(
+    elastic_load_model: ElasticLoadModel,
+    period_dependent_harmonic_load_model: numpy.ndarray,
+    results: list[ParallelDegreOneInversionChunkResult],
+) -> tuple[numpy.ndarray, numpy.ndarray, Optional[numpy.ndarray]]:
+    """
+    Post-processes the degree one inversion results.
+    """
+
+    i_period = 0
+    geoid_deformation_chunks = []
+    vertical_displacement_chunks = []
+    residuals_chunks = (
+        [] if elastic_load_model.load_model_parameters.options.compute_residuals else None
     )
 
-    if invert_for_j2:
+    for result in results:
 
-        period_dependent_geoid_deformation[:, 0, 2, 0] = (
-            3
-            / 5
-            * DENSITY_RATIO
-            * (
-                1.0
-                + love_numbers_chunk[:, 1, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
-            )
-            * j_2
+        n_periods = len(result.period_dependent_degree_one)
+        period_dependent_harmonic_load_model[i_period : i_period + n_periods, 1, 0] = (
+            result.period_dependent_degree_one[:, 0, 0]
         )
-        period_dependent_vertical_displacement[:, 0, 2, 0] = (
-            3
-            / 5
-            * DENSITY_RATIO
-            * love_numbers_chunk[:, 1, BoundaryCondition.LOAD.value, Direction.VERTICAL.value]
-            * j_2
+        period_dependent_harmonic_load_model[i_period : i_period + n_periods, 1, 1] = (
+            result.period_dependent_degree_one[:, 0, 1]
+        )
+        period_dependent_harmonic_load_model[i_period : i_period + n_periods, -2, -1] = (
+            result.period_dependent_degree_one[:, 1, 1]
         )
 
-    return (
-        period_dependent_degree_one,
-        j_2,
-        stack_period_dependent_harmonics(
-            period_dependent_geoid_deformation.astype(numpy.complex64)
-        ),
-        stack_period_dependent_harmonics(
-            period_dependent_vertical_displacement.astype(numpy.complex64)
-        ),
-        residuals,
-    )
+        if result.j_2 is not None:
+
+            period_dependent_harmonic_load_model[i_period : i_period + n_periods, 2, 0] = result.j_2
+
+        geoid_deformation_chunks.append(result.period_dependent_geoid_deformation)
+        vertical_displacement_chunks.append(result.period_dependent_vertical_displacement)
+
+        if result.residuals is not None:
+
+            residuals_chunks.append(result.residuals)
+
+        i_period += n_periods
+
+    return geoid_deformation_chunks, vertical_displacement_chunks, residuals_chunks
 
 
 def period_dependent_degree_one_inversion(
@@ -341,16 +425,9 @@ def period_dependent_degree_one_inversion(
     period_dependent_harmonic_load_model[:, 1, 1] = 1.0
     period_dependent_harmonic_load_model[:, -2, -1] = 1.0
 
-    if elastic_load_model.load_model_parameters.options.invert_for_J2:
+    if elastic_load_model.load_model_parameters.options.invert_for_j_2:
 
         period_dependent_harmonic_load_model[:, 2, 0] = 1.0
-
-    i_period = 0
-    geoid_deformation_chunks = []
-    vertical_displacement_chunks = []
-    residuals_chunks = (
-        [] if elastic_load_model.load_model_parameters.options.compute_residuals else None
-    )
 
     if love_numbers.shape[0] == 1:  # Purely elastic case.
 
@@ -372,53 +449,19 @@ def period_dependent_degree_one_inversion(
             ],
         )
 
-    for (
-        inverted_degree_one,
-        j_2,
-        geoid_deformation_chunk,
-        vertical_displacement_chunk,
-        residuals_chunk,
-    ) in results:
-
-        n_periods = len(inverted_degree_one)
-        period_dependent_harmonic_load_model[i_period : i_period + n_periods, 1, 0] = (
-            inverted_degree_one[:, 0, 0]
+    geoid_deformation_chunks, vertical_displacement_chunks, residuals_chunks = (
+        stack_parallel_degree_one_inversion_results(
+            elastic_load_model=elastic_load_model,
+            period_dependent_harmonic_load_model=period_dependent_harmonic_load_model,
+            results=results,
         )
-        period_dependent_harmonic_load_model[i_period : i_period + n_periods, 1, 1] = (
-            inverted_degree_one[:, 0, 1]
-        )
-        period_dependent_harmonic_load_model[i_period : i_period + n_periods, -2, -1] = (
-            inverted_degree_one[:, 1, 1]
-        )
-
-        if j_2 is not None:
-
-            period_dependent_harmonic_load_model[i_period : i_period + n_periods, 2, 0] = j_2
-
-        geoid_deformation_chunks.append(geoid_deformation_chunk)
-        vertical_displacement_chunks.append(vertical_displacement_chunk)
-
-        if residuals_chunk is not None:
-
-            residuals_chunks.append(residuals_chunk)
-
-        i_period += n_periods
-
-    geoid_deformation = numpy.vstack(geoid_deformation_chunks)
-    vertical_displacement = numpy.vstack(vertical_displacement_chunks)
-
-    if residuals_chunks is not None:
-
-        residuals = numpy.vstack(residuals_chunks)
-    else:
-
-        residuals = None
+    )
 
     return (
         period_dependent_harmonic_load_model,
         {
-            "geoid_deformation": geoid_deformation,
-            "vertical_displacement": vertical_displacement,
-            "residuals": residuals,
+            "geoid_deformation": numpy.vstack(geoid_deformation_chunks),
+            "vertical_displacement": numpy.vstack(vertical_displacement_chunks),
+            "residuals": None if residuals_chunks is None else numpy.vstack(residuals_chunks),
         },
     )

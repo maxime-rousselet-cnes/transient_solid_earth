@@ -379,7 +379,7 @@ class LoadModelOptionParameters(BaseModel):
     """
 
     compute_residuals: bool = True
-    invert_for_J2: bool = True
+    invert_for_j_2: bool = True
     save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
 
 

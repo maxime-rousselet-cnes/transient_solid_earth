@@ -97,7 +97,7 @@
         },
         "options": {
             "compute_residuals": true,
-            "invert_for_J2": true,
+            "invert_for_j_2": true,
             "save_options": {
                 "json_harmonics": {
                     "all": true,
