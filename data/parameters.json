@@ -96,8 +96,8 @@
             "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
         },
         "options": {
-            "compute_residuals": true,
-            "invert_for_j_2": true,
+            "compute_residuals": false,
+            "invert_for_j_2": false,
             "save_options": {
                 "json_harmonics": {
                     "all": true,

@@ -155,12 +155,16 @@ class ParallelDegreOneInversionChunkResult:
     def update(
         self,
         i_period: int,
-        solution_vector: numpy.ndarray,
-        grid: numpy.ndarray,
+        left_hand_side: numpy.ndarray,
+        right_hand_side: numpy.ndarray,
+        ocean_grid_and_mesh: Optional[tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]],
     ) -> None:
         """
         Processes the degree one inversion results for a single period.
         """
+
+        # Solves the least squares.
+        solution_vector, _, _, _ = lstsq(left_hand_side, right_hand_side)
 
         self.period_dependent_degree_one[i_period, :, :] = numpy.array(
             [[solution_vector[0, 0], solution_vector[1, 0]], [0.0, solution_vector[2, 0]]],
@@ -171,8 +175,12 @@ class ParallelDegreOneInversionChunkResult:
 
             self.j_2[i_period] = solution_vector[4, 0]
 
-        if not grid is None:
+        if ocean_grid_and_mesh:
 
+            lat_mesh_ocean, lon_mesh_ocean, grid = ocean_grid_and_mesh
+            grid[lat_mesh_ocean, lon_mesh_ocean] = (
+                left_hand_side @ solution_vector - right_hand_side
+            ).flatten()
             self.residuals[i_period, :, :] = make_harmonics(grid=grid, n_max=self.n_max)
 
     def stack_components(self, love_numbers_chunk: numpy.ndarray) -> None:
@@ -224,14 +232,47 @@ class ParallelDegreOneInversionChunkResult:
         )
 
 
-def parallel_period_dependent_degree_one_inversion(
-    period_dependent_harmonic_load_model_chunk: numpy.ndarray,
-    love_numbers_chunk: numpy.ndarray,
+def get_residual_grid(
+    elastic_load_model: ElasticLoadModel, ocean_mask_indices: numpy.ndarray
+) -> Optional[tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]]:
+    """
+    Builds the grid on which residuals are optionally evaluated.
+    """
+
+    if elastic_load_model.load_model_parameters.options.compute_residuals:
+
+        lat_idx = numpy.arange(
+            len(elastic_load_model.elastic_load_model_spatial_products.latitudes), dtype=numpy.int32
+        )
+        lon_idx = numpy.arange(
+            len(elastic_load_model.elastic_load_model_spatial_products.longitudes),
+            dtype=numpy.int32,
+        )
+        lat_mesh, lon_mesh = numpy.meshgrid(lat_idx, lon_idx, indexing="ij")
+        return (
+            lat_mesh.flatten()[ocean_mask_indices],
+            lon_mesh.flatten()[ocean_mask_indices],
+            numpy.zeros(lat_mesh.shape, dtype=numpy.complex64),
+        )
+
+    return None
+
+
+def build_sea_level_equation_terms(
     elastic_load_model: ElasticLoadModel,
     harmonic_load_model_trend: numpy.ndarray,
-) -> ParallelDegreOneInversionChunkResult:
+    period_dependent_harmonic_load_model_chunk: numpy.ndarray,
+    love_numbers_chunk: numpy.ndarray,
+) -> tuple[
+    numpy.ndarray,
+    numpy.ndarray,
+    numpy.ndarray,
+    numpy.ndarray,
+    Optional[tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]],
+    ParallelDegreOneInversionChunkResult,
+]:
     """
-    Degree one inversion job for a chunk of the load model, parallelized over periods.
+    Needed preprocessing for chunk degree one inversion.
     """
 
     mask: (
@@ -255,24 +296,6 @@ def parallel_period_dependent_degree_one_inversion(
         ** 0.5
     ).astype(numpy.complex64)
 
-    if elastic_load_model.load_model_parameters.options.compute_residuals:
-
-        lat_idx = numpy.arange(
-            len(elastic_load_model.elastic_load_model_spatial_products.latitudes), dtype=numpy.int32
-        )
-        lon_idx = numpy.arange(
-            len(elastic_load_model.elastic_load_model_spatial_products.longitudes),
-            dtype=numpy.int32,
-        )
-        lat_mesh, lon_mesh = numpy.meshgrid(lat_idx, lon_idx, indexing="ij")
-        lat_mesh_ocean = lat_mesh.flatten()[ocean_mask_indices]
-        lon_mesh_ocean = lon_mesh.flatten()[ocean_mask_indices]
-        grid = numpy.zeros(lat_mesh.shape, dtype=numpy.complex64)
-
-    else:
-
-        grid = None
-
     n_chunk = period_dependent_harmonic_load_model_chunk.shape[0]
 
     result = ParallelDegreOneInversionChunkResult(
@@ -290,13 +313,6 @@ def parallel_period_dependent_degree_one_inversion(
         )
     )
 
-    low_degrees_polynomials = make_low_degree_polynomials(
-        ocean_mask_indices=ocean_mask_indices,
-        n_max=elastic_load_model.load_model_parameters.signature.n_max,
-    )
-
-    invert_for_j_2 = elastic_load_model.load_model_parameters.options.invert_for_j_2
-
     # Precompute basis vectors for stacking along last axis
     basis_vectors = [
         -period_dependent_right_hand_side[:, 0, 1, 0],
@@ -308,17 +324,58 @@ def parallel_period_dependent_degree_one_inversion(
     # Resets degree 1 harmonics in right hand side to zero.
     period_dependent_right_hand_side[:, :, :2, :] = 0.0
 
-    if invert_for_j_2:
+    if elastic_load_model.load_model_parameters.options.invert_for_j_2:
 
         basis_vectors.append(-period_dependent_right_hand_side[:, 0, 2, 0].astype(numpy.complex64))
         period_dependent_right_hand_side[:, 0, 2, 0] = 0.0
 
     period_dependent_left_hand_side = (
         least_square_weights[None, :]
-        * low_degrees_polynomials[: 5 if invert_for_j_2 else 4, :]  # (1, n_points, n_poly)
+        * make_low_degree_polynomials(
+            ocean_mask_indices=ocean_mask_indices,
+            n_max=elastic_load_model.load_model_parameters.signature.n_max,
+        )[
+            : 5 if elastic_load_model.load_model_parameters.options.invert_for_j_2 else 4, :
+        ]  # (1, n_points, n_poly)
     ).T[None, :, :] * numpy.array(basis_vectors).T[
         :, None, :  # (n_chunk, 1, n_poly).
     ]  # (n_chunk, n_points, n_poly)
+
+    return (
+        period_dependent_left_hand_side,
+        period_dependent_right_hand_side,
+        least_square_weights,
+        ocean_mask_indices,
+        get_residual_grid(
+            elastic_load_model=elastic_load_model, ocean_mask_indices=ocean_mask_indices
+        ),
+        result,
+    )
+
+
+def parallel_period_dependent_degree_one_inversion(
+    period_dependent_harmonic_load_model_chunk: numpy.ndarray,
+    love_numbers_chunk: numpy.ndarray,
+    elastic_load_model: ElasticLoadModel,
+    harmonic_load_model_trend: numpy.ndarray,
+) -> ParallelDegreOneInversionChunkResult:
+    """
+    Degree one inversion job for a chunk of the load model, parallelized over periods.
+    """
+
+    (
+        period_dependent_left_hand_side,
+        period_dependent_right_hand_side,
+        least_square_weights,
+        ocean_mask_indices,
+        ocean_grid_and_mesh,
+        result,
+    ) = build_sea_level_equation_terms(
+        elastic_load_model=elastic_load_model,
+        harmonic_load_model_trend=harmonic_load_model_trend,
+        period_dependent_harmonic_load_model_chunk=period_dependent_harmonic_load_model_chunk,
+        love_numbers_chunk=love_numbers_chunk,
+    )
 
     left_hand_side: numpy.ndarray
     harmonic_right_hand_side: numpy.ndarray
@@ -327,30 +384,24 @@ def parallel_period_dependent_degree_one_inversion(
         zip(period_dependent_left_hand_side, period_dependent_right_hand_side)
     ):
 
-        spatial_right_hand_side_real = make_grid_from_unstacked(
+        spatial_right_hand_side = make_grid_from_unstacked(
             harmonics=harmonic_right_hand_side.real,
             n_max=elastic_load_model.load_model_parameters.signature.n_max,
-        )
-        spatial_right_hand_side_imag = make_grid_from_unstacked(
+        ) + 1j * make_grid_from_unstacked(
             harmonics=harmonic_right_hand_side.imag,
             n_max=elastic_load_model.load_model_parameters.signature.n_max,
         )
-        spatial_right_hand_side = spatial_right_hand_side_real + 1j * spatial_right_hand_side_imag
         right_hand_side = (
             least_square_weights
             * spatial_right_hand_side.astype(numpy.complex64).flatten()[ocean_mask_indices]
         )[:, None]
 
-        # Solves the least squares.
-        solution_vector, _, _, _ = lstsq(left_hand_side, right_hand_side)
-
-        if elastic_load_model.load_model_parameters.options.compute_residuals:
-
-            grid[lat_mesh_ocean, lon_mesh_ocean] = (
-                left_hand_side @ solution_vector - right_hand_side
-            ).flatten()
-
-        result.update(i_period=i_period, solution_vector=solution_vector, grid=grid)
+        result.update(
+            i_period=i_period,
+            left_hand_side=left_hand_side,
+            right_hand_side=right_hand_side,
+            ocean_grid_and_mesh=ocean_grid_and_mesh,
+        )
 
     # Post-process degree one inversion components.
     result.stack_components(love_numbers_chunk=love_numbers_chunk)

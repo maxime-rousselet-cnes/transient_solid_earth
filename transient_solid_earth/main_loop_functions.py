@@ -8,26 +8,35 @@ from pathlib import Path
 import numpy
 from scipy.fft import fft, ifft
 
-from .constants import (EMPIRICAL_INTERPOLATION_TIEMOUT_FACTOR,
-                        BoundaryCondition, Direction)
-from .database import (add_result_to_table, extract_terminal_attributes,
-                       is_in_table, load_complex_array, save_base_model,
-                       save_complex_array)
+from .constants import EMPIRICAL_INTERPOLATION_TIEMOUT_FACTOR, BoundaryCondition, Direction
+from .database import (
+    add_result_to_table,
+    extract_terminal_attributes,
+    is_in_table,
+    load_complex_array,
+    save_base_model,
+    save_complex_array,
+)
 from .degree_one import period_dependent_degree_one_inversion
 from .elastic_load_models import ElasticLoadModel, load_elastic_load_model
-from .formating import (make_grid, stack_period_dependent_harmonics,
-                        unstack_period_dependent_harmonics)
+from .formating import (
+    make_grid,
+    stack_period_dependent_harmonics,
+    unstack_period_dependent_harmonics,
+)
 from .leakage_correction import forward_modeling_leakage_correction
 from .parameters import ParallelComputingParameters, Parameters, generate_hash
-from .paths import (anelastic_load_models_path, anelastic_pole_motion_path,
-                    elastic_load_models_path,
-                    harmonic_geoid_deformation_trends_path,
-                    harmonic_residual_trends_path,
-                    harmonic_vertical_displacement_trends_path,
-                    interpolated_love_numbers_path)
+from .paths import (
+    anelastic_load_models_path,
+    anelastic_pole_motion_path,
+    elastic_load_models_path,
+    harmonic_geoid_deformation_trends_path,
+    harmonic_residual_trends_path,
+    harmonic_vertical_displacement_trends_path,
+    interpolated_love_numbers_path,
+)
 from .polar_tide import polar_motion_correction
-from .trends import (get_ocean_mean_trend,
-                     get_trend_from_period_dependent_harmonic_model)
+from .trends import get_ocean_mean_trend, get_trend_from_period_dependent_harmonic_model
 
 STEPS_TO_POST_PROCESS = [0, 1, 3]
 
@@ -332,51 +341,6 @@ def anelastic_load_model_re_estimation_processing_steps(
             past_trend / elastic_load_model.base_products.temporal_products.target_past_trend
         )
 
-        print(
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=get_trend_from_period_dependent_harmonic_model(
-                    period_dependent_harmonic_model=period_dependent_harmonic_load_model_steps[3],
-                    elastic_load_model=elastic_load_model,
-                ),
-                elastic_load_model=elastic_load_model,
-            ),
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=harmonic_load_model_past_trend,
-                elastic_load_model=elastic_load_model,
-            ),
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=get_trend_from_period_dependent_harmonic_model(
-                    period_dependent_harmonic_model=period_dependent_inversion_components[
-                        "geoid_deformation"
-                    ],
-                    elastic_load_model=elastic_load_model,
-                ),
-                elastic_load_model=elastic_load_model,
-            ),
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=harmonic_load_model_past_trend,
-                elastic_load_model=elastic_load_model,
-            ),
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=get_trend_from_period_dependent_harmonic_model(
-                    period_dependent_harmonic_model=period_dependent_inversion_components[
-                        "vertical_displacement"
-                    ],
-                    elastic_load_model=elastic_load_model,
-                ),
-                elastic_load_model=elastic_load_model,
-            ),
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=get_trend_from_period_dependent_harmonic_model(
-                    period_dependent_harmonic_model=period_dependent_inversion_components[
-                        "residuals"
-                    ],
-                    elastic_load_model=elastic_load_model,
-                ),
-                elastic_load_model=elastic_load_model,
-            ),
-        )
-
     # Eventually saves intermediate products.
     return post_process_intermediate_load_model_products(
         period_dependent_harmonic_load_model_steps=period_dependent_harmonic_load_model_steps,
@@ -594,6 +558,7 @@ def anelastic_load_model_re_estimation_processing_loop(
             add_result_to_table(
                 table_name="anelastic_load_models",
                 dictionary=extract_terminal_attributes(obj=elastic_load_model.load_model_parameters)
+                | {"rheological_model_id": rheological_model_id}
                 | {
                     "ocean_mean_trend_step_" + str(i_step + 1): load_model_ocean_trend_step
                     for i_step, load_model_ocean_trend_step in enumerate(

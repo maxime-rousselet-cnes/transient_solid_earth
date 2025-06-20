@@ -135,7 +135,6 @@ class SolidEarthElasticNumericalModel(SolidEarthNumericalModel):
             ).all()
         ):
 
-            # TODO: no plot.
             # Units for plot.
             radius_unit = self.solid_earth_parameters.model.radius_unit  # (m).
             elasticity_unit = (

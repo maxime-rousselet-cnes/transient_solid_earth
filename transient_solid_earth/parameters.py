@@ -378,8 +378,8 @@ class LoadModelOptionParameters(BaseModel):
     Defines optional computations for the load algorithm.
     """
 
-    compute_residuals: bool = True
-    invert_for_j_2: bool = True
+    compute_residuals: bool = False
+    invert_for_j_2: bool = False
     save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
 
 
