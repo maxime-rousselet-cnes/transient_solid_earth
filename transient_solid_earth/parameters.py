@@ -7,6 +7,7 @@ from json import dumps
 from pathlib import Path
 from typing import Any, Optional
 
+import numpy
 from pydantic import BaseModel
 
 from .constants import DEFAULT_SPLINE_NUMBER, EARTH_RADIUS, HASH_LENGTH
@@ -292,8 +293,8 @@ class LoadModelNumericalParameters(BaseModel):
     initial_plateau_date: int = -500
     ewh_threshold: float = 12.0  # (mm/yr). Threshold to consider for leakage correction.
     ewh_threshold_past: float = 6.0  # (mm/yr).
-    mean_ewh_threshold: Optional[float] = None  # (mm/yr). Threshold to consider for ocean mean.
-    mean_ewh_threshold_past: Optional[float] = None  # (mm/yr).
+    mean_ewh_threshold: float = numpy.inf  # (mm/yr). Threshold to consider for ocean mean.
+    mean_ewh_threshold_past: float = numpy.inf  # (mm/yr).
     ddk_filter_level: int = 5
     ocean_mask: str = "IMERG_land_sea_mask.nc"
     continents: str = "geopandas-continents.zip"

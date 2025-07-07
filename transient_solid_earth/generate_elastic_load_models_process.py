@@ -41,13 +41,12 @@ def get_time_dependent_components(
     barystatic_load_model_dates, barystatic_load_model = load_barystatic_load_model(
         load_model_parameters=load_model_parameters
     )
-    full_dates, anti_symmetric_load_model, past_trend, recent_trend = (
-        generate_anti_symmetric_signal_model(
-            load_model_parameters=load_model_parameters,
-            dates=barystatic_load_model_dates,
-            signal=barystatic_load_model,
-        )
+    full_dates, anti_symmetric_load_model, past_trend = generate_anti_symmetric_signal_model(
+        load_model_parameters=load_model_parameters,
+        dates=barystatic_load_model_dates,
+        signal=barystatic_load_model,
     )
+
     (
         past_trend_indices,
         recent_trend_indices,
@@ -62,7 +61,7 @@ def get_time_dependent_components(
     return (
         periods,
         full_load_model_dates,
-        time_dependent_component / recent_trend,  # (yr) := (mm) / (mm/yr).
+        time_dependent_component,
         past_trend,
         past_trend_indices,
         recent_trend_indices,
@@ -79,7 +78,7 @@ def get_time_dependent_m(
     Merges two function calls in a single one.
     """
 
-    full_dates, anti_symmetric_m, _, _ = generate_anti_symmetric_signal_model(
+    full_dates, anti_symmetric_m, _ = generate_anti_symmetric_signal_model(
         load_model_parameters=load_model_parameters,
         dates=polar_motion_dates,
         signal=m,
@@ -160,8 +159,6 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
     # Spatial products and harmonic component
     (
         load_model_harmonic_component,
-        latitudes,
-        longitudes,
         ocean_land_mask,
         ocean_land_buffered_mask,
     ) = load_load_model_harmonic_component(load_model_parameters=load_model_parameters)
@@ -193,8 +190,6 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
         # Creates the elastic load model.
         ElasticLoadModel(
             elastic_load_model_spatial_products=ElasticLoadModelSpatialProducts(
-                latitudes=latitudes,
-                longitudes=longitudes,
                 ocean_land_mask=ocean_land_mask,
                 ocean_land_buffered_mask=ocean_land_buffered_mask,
             ),
@@ -208,6 +203,12 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
         ).save()
 
         # Renames input (.JSON) file.
-        elastic_load_model_parameters_subpath.joinpath(
+        parameters_file = elastic_load_model_parameters_subpath.joinpath(
             worker_information.model_id + ".json"
-        ).rename(elastic_load_model_parameters_subpath.joinpath(load_model_line["ID"] + ".json"))
+        )
+
+        if parameters_file.exists():
+
+            parameters_file.rename(
+                elastic_load_model_parameters_subpath.joinpath(load_model_line["ID"] + ".json")
+            )

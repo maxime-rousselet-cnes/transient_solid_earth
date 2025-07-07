@@ -75,7 +75,7 @@ def forward_modeling_leakage_correction(
     load_model_parameters = elastic_load_model.load_model_parameters
 
     # Gets the input in spatial domain.
-    grid: numpy.ndarray[complex] = make_grid(
+    grid = make_grid(
         harmonics=harmonic_load_model_trend,
         n_max=elastic_load_model.load_model_parameters.signature.n_max,
     )
@@ -105,15 +105,15 @@ def forward_modeling_leakage_correction(
         )
 
         # Leakage input.
-        ewh_2_prime: numpy.ndarray[float] = (
+        ewh_2_prime = (
             ocean_true_level * (1 - mask_non_oceanic_signal) + grid * mask_non_oceanic_signal
         )
-        ewh_2_third: numpy.ndarray[float] = ocean_true_level * (
-            1 - mask_non_oceanic_signal
-        ) + grid * (1 - elastic_load_model.elastic_load_model_spatial_products.ocean_land_mask)
+        ewh_2_third = ocean_true_level * (1 - mask_non_oceanic_signal) + grid * (
+            1 - elastic_load_model.elastic_load_model_spatial_products.ocean_land_mask
+        )
 
         # Computes continental leakage on oceans.
-        ewh_2_second: numpy.ndarray[float] = grid_from_collection_sh_data(
+        ewh_2_second = grid_from_collection_sh_data(
             collection_data=_pool_apply_DDK_filter(
                 grace_monthly_sh=collection_sh_data_from_grid(
                     grid=ewh_2_prime,
@@ -125,7 +125,7 @@ def forward_modeling_leakage_correction(
         )
 
         # Applies correction.
-        differential_term: numpy.ndarray[float] = ewh_2_second - ewh_2_third
+        differential_term = ewh_2_second - ewh_2_third
         grid += (
             differential_term
             * (1 - elastic_load_model.elastic_load_model_spatial_products.ocean_land_mask)

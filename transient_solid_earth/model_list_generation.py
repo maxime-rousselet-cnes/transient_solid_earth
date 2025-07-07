@@ -114,12 +114,14 @@ def create_all_model_variations(
     """
 
     if not solid_earth_model_option_list:
+
         solid_earth_model_option_list = SOLID_EARTH_MODEL_ALL_OPTION_PARAMETERS
 
     # Generates a structure to contain all possible model descriptions.
     model_description_filenames: dict[SolidEarthModelPart, list[str]] = {
         model_part: [] for model_part in SolidEarthModelPart
     }
+
     for model_part, part_model_names in variable_parameters.model_names.items():
 
         if (model_part in variable_parameters.rheological_parameters.keys()) and (
@@ -127,6 +129,7 @@ def create_all_model_variations(
         ):
 
             for model_description_name in part_model_names:
+
                 model_description = SolidEarthModelDescription(
                     name=model_description_name, solid_earth_model_part=model_part
                 )
@@ -160,12 +163,16 @@ def create_all_model_variations(
 
     # Merges for non-redundancy.
     all_model_variations = []
+
     for elastic_model_name in model_description_filenames[SolidEarthModelPart.ELASTICITY]:
+
         all_anelastic_model_variations = {}
+
         for long_term_anelasticity_model_name, short_term_anelasticity_model_name in product(
             model_description_filenames[SolidEarthModelPart.LONG_TERM_ANELASTICITY],
             model_description_filenames[SolidEarthModelPart.SHORT_TERM_ANELASTICITY],
         ):
+
             for options in solid_earth_model_option_list:
 
                 all_anelastic_model_variations[
@@ -217,13 +224,21 @@ def extract_parameter_paths(
     from a nested dictionary.
     Returns a list of (path_tuple, values).
     """
+
     paths = []
+
     for key, value in param_dict.items():
+
         current_path = prefix + (key,)
+
         if isinstance(value, dict):
+
             paths.extend(extract_parameter_paths(value, current_path))
+
         else:
+
             paths.append((current_path, value))
+
     return paths
 
 
@@ -231,8 +246,11 @@ def set_attr_by_path(obj: Any, path: tuple[str, Any], value: Any):
     """
     Sets nested attribute value in obj given a path tuple.
     """
+
     for attr in path[:-1]:
+
         obj = getattr(obj, attr)
+
     setattr(obj, path[-1], value)
 
 
@@ -251,9 +269,13 @@ def generate_load_model_variations(
     results = []
 
     for combo in combinations:
+
         obj_copy = deepcopy(load_model_parameters)
+
         for path, value in zip(paths, combo):
+
             set_attr_by_path(obj_copy, path, value)
+
         results.append(obj_copy)
 
     return results

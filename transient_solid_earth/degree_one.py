@@ -245,13 +245,8 @@ def get_residual_grid(
 
     if elastic_load_model.load_model_parameters.options.compute_residuals:
 
-        lat_idx = numpy.arange(
-            len(elastic_load_model.elastic_load_model_spatial_products.latitudes), dtype=numpy.int32
-        )
-        lon_idx = numpy.arange(
-            len(elastic_load_model.elastic_load_model_spatial_products.longitudes),
-            dtype=numpy.int32,
-        )
+        lat_idx = numpy.arange(len(elastic_load_model.latitudes()), dtype=numpy.int32)
+        lon_idx = numpy.arange(len(elastic_load_model.longitudes()), dtype=numpy.int32)
         lat_mesh, lon_mesh = numpy.meshgrid(lat_idx, lon_idx, indexing="ij")
         return (
             lat_mesh.flatten()[ocean_mask_indices],
@@ -293,10 +288,9 @@ def build_sea_level_equation_terms(
     ocean_mask_indices = mask.flatten()
 
     least_square_weights = (
-        surface_ponderation(
-            mask=mask,
-            latitudes=elastic_load_model.elastic_load_model_spatial_products.latitudes,
-        ).flatten()[ocean_mask_indices]
+        surface_ponderation(mask=mask, latitudes=elastic_load_model.latitudes()).flatten()[
+            ocean_mask_indices
+        ]
         ** 0.5
     ).astype(numpy.complex64)
 

@@ -2,6 +2,7 @@
 Sub-functions for a readable main loop.
 """
 
+import os
 import shutil
 from pathlib import Path
 
@@ -36,7 +37,11 @@ from .paths import (
     interpolated_love_numbers_path,
 )
 from .polar_tide import polar_motion_correction
-from .trends import get_ocean_mean_trend, get_trend_from_period_dependent_harmonic_model
+from .trends import (
+    get_ocean_mean_trend,
+    get_trend_from_period_dependent_harmonic_model,
+    get_trend_from_signal,
+)
 
 STEPS_TO_POST_PROCESS = [0, 1, 3]
 
@@ -47,7 +52,10 @@ def clear_path(path: Path) -> None:
     """
 
     if path.exists():
-        shutil.rmtree(path)
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
 
 def get_interpolation_timeout(period_new_values_per_id: dict[str, numpy.ndarray[float]]) -> float:
@@ -138,10 +146,10 @@ def renormalize_past_temporal_component(
 
     # Multiplicative factor on past time period.
     elastic_load_model.base_products.time_dependent_component[
-        elastic_load_model.side_products.past_trend_indices
+        : elastic_load_model.side_products.past_trend_indices[-1] + 1
     ] /= past_trend_ratio
     elastic_load_model.base_products.time_dependent_component[
-        -elastic_load_model.side_products.past_trend_indices
+        -elastic_load_model.side_products.past_trend_indices[-1] :
     ] /= past_trend_ratio
 
     # Additive constant on recent time period to maintain continuity.
@@ -256,9 +264,15 @@ def anelastic_load_model_re_estimation_processing_steps(
             dtype=numpy.complex64,
         )
 
-        # Step 1: unmodified signal.
+        # Step 1: unmodified normalized signal (mm).
         period_dependent_harmonic_load_model_steps[0] = numpy.tensordot(
-            a=fft(elastic_load_model.base_products.time_dependent_component),
+            # (yr) := (mm) / (mm/yr).
+            a=fft(elastic_load_model.base_products.time_dependent_component)
+            / get_trend_from_signal(
+                signal=elastic_load_model.base_products.time_dependent_component,
+                elastic_load_model=elastic_load_model,
+            ),
+            # (mm/yr).
             b=elastic_load_model.base_products.load_model_harmonic_component,
             axes=0,
         )
@@ -270,11 +284,7 @@ def anelastic_load_model_re_estimation_processing_steps(
 
         if elastic_load_model.load_model_parameters.history.pole.use:
 
-            period_dependent_harmonic_load_model_steps[1][
-                :,
-                2,
-                1,
-            ] -= c_2_1_pt_se_complex
+            period_dependent_harmonic_load_model_steps[1][:, 2, 1] -= c_2_1_pt_se_complex
             period_dependent_harmonic_load_model_steps[1][:, -3, -2] -= s_2_1_pt_se_complex
 
         # Step 3: All degrees re-estimated using the potential load Love number.
@@ -365,7 +375,7 @@ def post_process_intermediate_load_model_products(
 
     # Performs all trend computations for output.
     harmonic_load_model_trend_steps = numpy.zeros(
-        shape=period_dependent_harmonic_load_model_steps.shape[1:]
+        shape=numpy.concatenate(([5], period_dependent_harmonic_load_model_steps.shape[2:]))
     )
     harmonic_load_model_trend_steps[2] = harmonic_load_model_trend_step_3
 
@@ -417,7 +427,7 @@ def post_process_intermediate_load_model_products(
                     n_max=elastic_load_model.load_model_parameters.signature.n_max,
                 ),
                 name=anelastic_load_model_id,
-                path=anelastic_load_models_path,
+                path=anelastic_load_models_path.joinpath("step_" + str(i_step + 1)),
             )
 
     # Eventually saves the degree one inversion comonents.

@@ -21,27 +21,20 @@ def get_ocean_mean_trend(
     """
 
     numerical_parameters = elastic_load_model.load_model_parameters.numerical_parameters
+
     return mean_on_mask(
         mask=(
             elastic_load_model.elastic_load_model_spatial_products.ocean_land_buffered_mask
             if buffered
             else elastic_load_model.elastic_load_model_spatial_products.ocean_land_mask
         ),
-        latitudes=elastic_load_model.elastic_load_model_spatial_products.latitudes,
+        latitudes=elastic_load_model.latitudes(),
         load_model_parameters=elastic_load_model.load_model_parameters,
         grid_or_harmonics=harmonic_load_model_trend,
         ewh_threshold=(  # Eventually overwrites with "ewh_threshold".
-            (
-                numerical_parameters.mean_ewh_threshold
-                if numerical_parameters.mean_ewh_threshold
-                else numerical_parameters.ewh_threshold
-            )
+            (numerical_parameters.mean_ewh_threshold)
             if recent_trend
-            else (
-                numerical_parameters.mean_ewh_threshold_past
-                if numerical_parameters.mean_ewh_threshold_past
-                else numerical_parameters.ewh_threshold_past
-            )
+            else (numerical_parameters.mean_ewh_threshold_past)
         ),
     )
 

@@ -7,7 +7,7 @@ import warnings
 import numpy
 from scipy import interpolate
 
-from .database import load_base_model, load_complex_array, save_complex_array
+from .database import get_periods, load_base_model, load_complex_array, save_complex_array
 from .functions import generate_n_factor
 from .paths import intermediate_result_subpaths, interpolated_love_numbers_path
 from .worker_parser import WorkerInformation
@@ -49,12 +49,7 @@ def worker_interpolate_love_numbers(worker_information: WorkerInformation) -> No
 
         degree = int(float(degree_sub_path.name))
         degrees += [degree]
-        periods[degree] = [
-            float(period_sub_path.name)
-            for period_sub_path in degree_sub_path.iterdir()
-            if period_sub_path.is_dir()
-        ]
-        periods[degree].sort()
+        periods[degree] = get_periods(path=degree_sub_path)
         inputs[degree] = load_complex_array(path=degree_sub_path)
 
     degrees.sort()
@@ -64,10 +59,14 @@ def worker_interpolate_love_numbers(worker_information: WorkerInformation) -> No
     for degree in degrees:
 
         if [numpy.inf] == periods[degree]:
+
             # Handles the elastic case.
             interpolated_on_periods.append(inputs[degree])  # Length 1 along axis 1.
+
         else:
+
             with warnings.catch_warnings():
+
                 warnings.simplefilter("ignore", category=RuntimeWarning)
                 interpolated_on_periods.append(
                     interpolate.interp1d(

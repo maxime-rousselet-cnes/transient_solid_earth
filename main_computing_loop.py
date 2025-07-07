@@ -10,11 +10,14 @@ import os
 import numpy
 
 from transient_solid_earth import (
+    SolidEarthModelOptionParameters,
     SolidEarthModelPart,
     adaptative_step_parallel_computing_loop,
     anelastic_load_model_re_estimation_processing_loop,
+    anelastic_load_models_path,
     clear_path,
     create_all_model_variations,
+    elastic_load_models_path,
     elastic_polar_tide_correction_back,
     generate_degrees_list,
     generate_elastic_load_models_parallel_loop,
@@ -23,30 +26,42 @@ from transient_solid_earth import (
     interpolated_love_numbers_path,
     load_complex_array,
     load_parameters,
-    loads_path,
     logs_subpaths,
     tables_path,
 )
 
 CLEAR = {"love_numbers": False, "generate_elastic_load_models": False}
 CLEAR["interpolate_love_numbers"] = CLEAR["generate_elastic_load_models"]
-
+CLEAR["anelastic_load_models"] = False
 
 if __name__ == "__main__":
 
     # Eventually clears the directories.
     for path_to_clear, to_clear in CLEAR.items():
-        if to_clear and logs_subpaths[path_to_clear].exists():
+        if to_clear and path_to_clear in logs_subpaths and logs_subpaths[path_to_clear].exists():
             clear_path(path=logs_subpaths[path_to_clear])
-    if CLEAR["generate_elastic_load_models"]:
-        clear_path(path=tables_path)
-        clear_path(path=loads_path)
+    if CLEAR["generate_elastic_load_models"] or CLEAR["anelastic_load_models"]:
+        clear_path(path=tables_path.joinpath("anelastic_load_models.csv"))
+        clear_path(path=tables_path.joinpath("elastic_load_models.csv"))
+        if CLEAR["generate_elastic_load_models"]:
+            clear_path(path=elastic_load_models_path)
+        else:
+            clear_path(path=anelastic_load_models_path)
 
     # Loads parameters and rheological models.
     parameters = load_parameters()
     rheological_models: list[
         tuple[dict[SolidEarthModelPart, str], list[dict[SolidEarthModelPart, str]]]
-    ] = create_all_model_variations(variable_parameters=parameters.solid_earth_variabilities)
+    ] = create_all_model_variations(
+        variable_parameters=parameters.solid_earth_variabilities,
+        solid_earth_model_option_list=[
+            SolidEarthModelOptionParameters(
+                use_long_term_anelasticity=True,
+                use_short_term_anelasticity=True,
+                use_bounded_attenuation_functions=True,
+            )
+        ],
+    )
 
     # Preprocesses the elastic load models.
     generate_elastic_load_models_parallel_loop(parameters=parameters)

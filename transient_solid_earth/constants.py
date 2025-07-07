@@ -29,7 +29,7 @@ class BoundaryCondition(Enum):
 
     LOAD = 0
     SHEAR = 1
-    POETENTIAL = 2
+    POTENTIAL = 2
 
 
 LAT_LON_PROJECTION = 4326

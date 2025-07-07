@@ -24,8 +24,8 @@ def polar_motion_correction(
 
     # Gets element in position 1 for degree 2. Solid Earth (SE) Polar Tide (PT).
     phi_se_pt_complex: numpy.ndarray[complex] = (
-        -PHI_CONSTANT
-        * love_numbers[:, 1, BoundaryCondition.POETENTIAL.value, Direction.POTENTIAL.value]
+        PHI_CONSTANT
+        * love_numbers[:, 1, BoundaryCondition.POTENTIAL.value, Direction.POTENTIAL.value]
         * (frequencial_m1 - 1.0j * frequencial_m2)
     )
 
@@ -37,7 +37,7 @@ def polar_motion_correction(
     coherent_polar_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=numpy.complex64)
 
     return (
-        -stokes_to_ewh_factor * fft(coherent_polar_motion.real),  # C_2_1 frequencial correction.
+        stokes_to_ewh_factor * fft(coherent_polar_motion.real),  # C_2_1 frequencial correction.
         stokes_to_ewh_factor * fft(coherent_polar_motion.imag),  # S_2_1 frequencial correction.
     )
 

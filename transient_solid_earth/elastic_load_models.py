@@ -4,12 +4,12 @@ Needed classes to describe a load model (EWH; mm/yr) and its associated products
 
 import dataclasses
 from pathlib import Path
-from typing import Optional
 
 import numpy
 from pydantic import BaseModel, model_validator
 
 from .database import load_base_model, save_base_model
+from .formating import make_latitudes, make_longitudes
 from .parameters import DEFAULT_LOAD_MODEL_PARAMETERS, LoadModelParameters
 from .paths import elastic_load_models_path
 
@@ -19,8 +19,6 @@ class ElasticLoadModelSpatialProducts(BaseModel):
     Spatial products of an elastic load model, needed for anelastic re-estimation.
     """
 
-    latitudes: numpy.ndarray | list = numpy.zeros(shape=())
-    longitudes: Optional[numpy.ndarray | list] = None
     ocean_land_mask: numpy.ndarray | list = numpy.zeros(shape=())
     ocean_land_buffered_mask: numpy.ndarray | list = numpy.zeros(shape=())
 
@@ -38,8 +36,6 @@ class ElasticLoadModelSpatialProducts(BaseModel):
         To authorize reccursion.
         """
 
-        self.latitudes = numpy.array(self.latitudes)
-        self.longitudes = None if self.longitudes is None else numpy.array(self.longitudes)
         self.ocean_land_mask = numpy.array(self.ocean_land_mask)
         self.ocean_land_buffered_mask = numpy.array(self.ocean_land_buffered_mask)
         return self
@@ -79,9 +75,8 @@ class BaseProducts(BaseModel):
     """
 
     temporal_products: TemporalProducts = TemporalProducts()
-    load_model_harmonic_component: numpy.ndarray | list = numpy.zeros(shape=())
-    # (yr) := (mm) / (mm/yr).
-    time_dependent_component: numpy.ndarray | list = numpy.zeros(shape=())
+    load_model_harmonic_component: numpy.ndarray | list = numpy.zeros(shape=())  # (mm/yr).
+    time_dependent_component: numpy.ndarray | list = numpy.zeros(shape=())  # (mm).
 
     @dataclasses.dataclass
     class Config:
@@ -159,6 +154,20 @@ class ElasticLoadModel(BaseModel):
         """
 
         save_base_model(obj=self, name=self.load_model_parameters.model_id(), path=path)
+
+    def latitudes(self) -> numpy.ndarray:
+        """
+        For repeatability.
+        """
+
+        return make_latitudes(n_max=self.load_model_parameters.signature.n_max)
+
+    def longitudes(self) -> numpy.ndarray:
+        """
+        For repeatability.
+        """
+
+        return make_longitudes(n_max=self.load_model_parameters.signature.n_max)
 
 
 def load_elastic_load_model(

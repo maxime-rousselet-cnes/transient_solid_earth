@@ -21,10 +21,15 @@ class JSONSerialize(json.JSONEncoder):
     """
 
     def default(self, o):
+
         if isinstance(o, numpy.ndarray):
+
             return o.tolist()
+
         if isinstance(o, BaseModel):
+
             return o.__dict__
+
         return json.JSONEncoder().default(o)
 
 
@@ -35,6 +40,7 @@ def save_base_model(obj: Any, name: str, path: Path):
 
     # Eventually considers subpath.
     while len(name.split("/")) > 1:
+
         path = path.joinpath(name.split("/")[0])
         name = "".join(name.split("/")[1:])
 
@@ -43,6 +49,7 @@ def save_base_model(obj: Any, name: str, path: Path):
 
     # Saves the object.
     with open(path.joinpath(name + ".json"), "w", encoding="utf-8") as file:
+
         json.dump(obj, fp=file, cls=JSONSerialize, indent=4)
 
 
@@ -56,14 +63,21 @@ def load_base_model(
     """
 
     filepath = path.joinpath(name + ("" if ".json" in name else ".json"))
+
     try:
+
         with open(filepath, "r", encoding="utf-8") as file:
+
             loaded_content = json.load(fp=file)
+
     except json.decoder.JSONDecodeError:
+
         # Waits to avoid concurrent reading/writing.
         sleep(1e-3)
+
         # Then retries.
         return load_base_model(name=name, path=path, base_model_type=base_model_type)
+
     return loaded_content if not base_model_type else base_model_type(**loaded_content)
 
 
@@ -86,10 +100,12 @@ def save_complex_array(
     """
 
     if isinstance(obj, numpy.ndarray):
+
         obj = {
             "real": numpy.real(obj),
             "imag": numpy.imag(obj),
         }
+
     path = path if not name else path.joinpath(name)
     save_base_model(obj=obj["real"], name="real", path=path)
     save_base_model(obj=obj["imag"], name="imag", path=path)
@@ -106,6 +122,7 @@ def generate_degrees_list(
     """
 
     if n_max:
+
         degree_thresholds = [threshold for threshold in degree_thresholds if threshold <= n_max]
         degree_thresholds += [n_max + degree_steps[-1]]
         degree_steps = degree_steps[: len(degree_thresholds) - 1]
@@ -126,26 +143,41 @@ def extract_terminal_attributes(obj: Any, prefix: str = "") -> Union[dict, Any]:
     """
 
     if isinstance(obj, (list, tuple)):
+
         # Handle sequences by extracting each element with the same prefix
         result = {}
+
         for i, item in enumerate(obj):
+
             nested = extract_terminal_attributes(item, f"{prefix}{i}:" if prefix else f"{i}:")
+
             if isinstance(nested, dict):
+
                 result.update(nested)
+
         return result
 
     if hasattr(obj, "__dict__"):
+
         result = {}
         attributes: dict = vars(obj)
 
         for attr, value in attributes.items():
+
             full_key = f"{prefix}{attr}" if not prefix else f"{prefix}:{attr}"
+
             if hasattr(value, "__dict__") or isinstance(value, (list, tuple)):
+
                 nested = extract_terminal_attributes(value, full_key)
+
                 if isinstance(nested, dict):
+
                     result.update(nested)
+
             else:
+
                 result[full_key] = value
+
         return result
 
     return obj
@@ -178,7 +210,26 @@ def add_result_to_table(table_name: str, dictionary: dict[str, str | bool | floa
 
     # Adds a line to the table (whether it exists or not)..
     with open(file=table_filepath, mode="a+", encoding="utf-8", newline="") as file:
+
         writer = DictWriter(file, dictionary.keys())
+
         if write:
+
             writer.writeheader()
+
         writer.writerow(dictionary)
+
+
+def get_periods(path: Path) -> list[float]:
+    """
+    Builds period list from directory names.
+    """
+
+    periods = [
+        float(period_sub_path.name)
+        for period_sub_path in path.iterdir()
+        if period_sub_path.is_dir()
+    ]
+    periods.sort()
+
+    return periods

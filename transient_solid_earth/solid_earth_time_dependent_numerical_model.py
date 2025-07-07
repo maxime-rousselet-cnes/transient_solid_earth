@@ -168,6 +168,18 @@ class SolidEarthTimeDependentNumericalModel(SolidEarthNumericalModel):
                     variables["lambda"] = variables["lambda_0"] - 2.0 / 3.0 * (
                         variables["mu"] - variables["mu_0"]
                     )
+                    model_layer.splines.update(
+                        {
+                            "lambda_real": interpolate.splrep(
+                                x=variables["x"], y=variables["lambda"].real
+                            ),
+                            "lambda_imag": interpolate.splrep(
+                                x=variables["x"], y=variables["lambda"].imag
+                            ),
+                            "mu_real": interpolate.splrep(x=variables["x"], y=variables["mu"].real),
+                            "mu_imag": interpolate.splrep(x=variables["x"], y=variables["mu"].imag),
+                        }
+                    )
 
                 # Updates solid matrix splines.
                 model_layer.update_solid_system_matrix(

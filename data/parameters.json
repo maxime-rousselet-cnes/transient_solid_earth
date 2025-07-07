@@ -55,8 +55,8 @@
             "initial_plateau_date": -500,
             "ewh_threshold": 12.0,
             "ewh_threshold_past": 6.0,
-            "mean_ewh_threshold": null,
-            "mean_ewh_threshold_past": null,
+            "mean_ewh_threshold": "inf",
+            "mean_ewh_threshold_past": "inf",
             "ddk_filter_level": 5,
             "ocean_mask": "IMERG_land_sea_mask.nc",
             "continents": "geopandas-continents.zip",
@@ -96,19 +96,19 @@
             "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
         },
         "options": {
-            "compute_residuals": false,
+            "compute_residuals": true,
             "invert_for_j_2": false,
             "save_options": {
                 "json_harmonics": {
                     "all": true,
                     "steps": [
-                        false,
-                        false,
-                        false,
-                        false,
-                        false
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
                     ],
-                    "inversion_components": false
+                    "inversion_components": true
                 }
             }
         }
@@ -141,15 +141,17 @@
         "history": {
             "lia": {
                 "use": [
-                    false,
-                    true
+                    true,
+                    false
                 ]
             }
         },
         "signature": {
             "file": [
+                "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv",
                 "GFZ",
-                "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+                "CSR",
+                "JPL"
             ]
         }
     },

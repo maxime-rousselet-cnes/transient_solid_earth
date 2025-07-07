@@ -295,13 +295,25 @@ def harmonics_sampling_to_grid(harmonics: numpy.ndarray[float], n_max: int) -> n
     return make_grid(harmonics=harmonics[: n_max + 1, : n_max + 1], n_max=n_max)
 
 
+def make_unstacked_harmonics(
+    grid: numpy.ndarray[float], n_max: int
+) -> SHRealCoeffs | SHComplexCoeffs:
+    """
+    Defines C/S harmonics (n_max + 1, n_max + 1) from a grid.
+    """
+
+    result: SHRealCoeffs | SHComplexCoeffs = SHGrid.from_array(
+        array=numpy.array(object=grid)
+    ).expand(lmax_calc=n_max)
+    return result.coeffs
+
+
 def make_harmonics(grid: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
     """
     Defines C/S harmonics (n_max + 1, n_max + 1) from a grid.
     """
 
-    result: SHRealCoeffs | SHComplexCoeffs = SHGrid.from_array(array=grid).expand(lmax_calc=n_max)
-    return stack_harmonics(harmonics=result.coeffs)
+    return stack_harmonics(harmonics=make_unstacked_harmonics(grid=grid, n_max=n_max))
 
 
 def grid_sampling(grid: numpy.ndarray[float], n_max: int) -> numpy.ndarray[float]:
@@ -427,19 +439,25 @@ def compute_grace_trends(
     return trends
 
 
-def midpoints(tab: numpy.ndarray) -> numpy.ndarray:
+def make_latitudes(n_max: int) -> numpy.ndarray:
     """
-    Computes midpoints. Returns an array shorter by one element than the input.
+    For repeatability.
     """
 
-    return (tab[1:] + tab[:-1]) / 2.0
+    return numpy.linspace(90, -90, 2 * (n_max + 1) + 1)
+
+
+def make_longitudes(n_max: int) -> numpy.ndarray:
+    """
+    For repeatability.
+    """
+
+    return numpy.linspace(0, 360, 4 * (n_max + 1) + 1)
 
 
 def load_load_model_harmonic_component(
     load_model_parameters: LoadModelParameters, path: Path = grace_data_path
 ) -> tuple[
-    numpy.ndarray[float],
-    numpy.ndarray[float],
     numpy.ndarray[float],
     numpy.ndarray[float],
     numpy.ndarray[float],
@@ -467,12 +485,8 @@ def load_load_model_harmonic_component(
         n_max=load_model_parameters.signature.n_max, grid_or_harmonics=grid
     )
     grid = grid_sampling(grid=grid, n_max=load_model_parameters.signature.n_max)
-    latitudes = midpoints(
-        tab=numpy.linspace(90, -90, 2 * (load_model_parameters.signature.n_max + 1) + 2)
-    )
-    longitudes = midpoints(
-        tab=numpy.linspace(0, 360, 4 * (load_model_parameters.signature.n_max + 1) + 2)
-    )
+    latitudes = make_latitudes(n_max=load_model_parameters.signature.n_max)
+    longitudes = make_longitudes(n_max=load_model_parameters.signature.n_max)
 
     # Gets masks.
     ocean_land_mask, ocean_land_buffered_mask = load_masks(
@@ -495,8 +509,6 @@ def load_load_model_harmonic_component(
 
     return (
         make_harmonics(grid=grid, n_max=load_model_parameters.signature.n_max),
-        latitudes,
-        longitudes,
         ocean_land_mask,
         ocean_land_buffered_mask,
     )
@@ -547,7 +559,7 @@ def load_masks(
 
 
 def mean_on_mask(
-    mask: numpy.ndarray[float],
+    mask: Optional[numpy.ndarray[float]],
     latitudes: numpy.ndarray[float],
     load_model_parameters: LoadModelParameters,
     grid_or_harmonics: numpy.ndarray[float],
@@ -563,7 +575,7 @@ def mean_on_mask(
         else make_grid(harmonics=grid_or_harmonics, n_max=load_model_parameters.signature.n_max)
     )
     surface = surface_ponderation(
-        mask=mask * (numpy.abs(grid) < ewh_threshold),
+        mask=(1.0 if mask is None else mask) * (numpy.abs(grid) < ewh_threshold),
         latitudes=latitudes,
     )
     return numpy.round(
@@ -656,7 +668,7 @@ def generate_anti_symmetric_signal_model(
     load_model_parameters: LoadModelParameters,
     dates: numpy.ndarray[float],
     signal: numpy.ndarray[float],
-) -> tuple[numpy.ndarray[float], numpy.ndarray[float], float, float]:
+) -> tuple[numpy.ndarray[float], numpy.ndarray[float], float]:
     """
     Generates an anti-symmetric signal model with initial zero-value plateau and central cubic
     interpolation spline for contintuity.
@@ -731,4 +743,4 @@ def generate_anti_symmetric_signal_model(
         bc_type=((1, 0.0), (1, 0.0)),
     )(x=full_dates[stop_index - 1 : -stop_index + 1])
 
-    return full_dates, anti_symmetric_signal, past_trend, recent_trend
+    return full_dates, anti_symmetric_signal, past_trend
