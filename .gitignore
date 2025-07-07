@@ -2,3 +2,5 @@ grace
 solid_earth_numerical_models
 outputs
 __pycache__
+figures/*.json
+figures/*.csv
