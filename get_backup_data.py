@@ -194,4 +194,4 @@ out["residuals_ocean_mean_trend"] = None
 out["ID"] = None
 
 # Save to file
-out.to_csv("data/outputs/tables/backup.csv", index=False)
+out.to_csv("transient_solid_earth/data/outputs/tables/backup.csv", index=False)

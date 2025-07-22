@@ -29,7 +29,7 @@ from transient_solid_earth import (
     stack_harmonics,
 )
 
-from .figures_formater_utils import (
+from .figures_data_formater_utils import (
     ANELASTIC_REFERENCE_LOAD_MODEL_ID,
     DEFAULT_FILTER_UNWANTED_VALUES,
     DEFAULT_FILTER_WANTED_VALUES,
@@ -394,10 +394,14 @@ def preprocess_figure_sup_5() -> None:
     )
 
 
-def preprocess_figure_sup_6() -> None:
+def preprocess_figure_sup_6(use_backup: bool = True) -> None:
     """
     Inversion residuals.
     """
+
+    if use_backup:
+
+        backup = load_base_model(name="residuals", path=figures_path)
 
     elastic_load_model = load_elastic_load_model(model_id=REFERENCE_ELASTIC_LOAD_MODEL_ID)
     elastic_load_model.elastic_load_model_spatial_products.ocean_land_mask = (
@@ -407,10 +411,22 @@ def preprocess_figure_sup_6() -> None:
     elastic_grid = load_base_model(
         name=ELASTIC_REFERENCE_LOAD_MODEL_ID, path=harmonic_residual_trends_path
     )
-    harmonics = make_unstacked_harmonics(
-        grid=elastic_grid,
-        n_max=elastic_load_model.load_model_parameters.signature.n_max,
-    )
+
+    if use_backup:
+
+        harmonics = numpy.array(object=backup["elastic"])[
+            :,
+            : elastic_load_model.load_model_parameters.signature.n_max + 1,
+            : elastic_load_model.load_model_parameters.signature.n_max + 1,
+        ]
+
+    else:
+
+        harmonics = make_unstacked_harmonics(
+            grid=elastic_grid,
+            n_max=elastic_load_model.load_model_parameters.signature.n_max,
+        )
+
     elastic_load_model.base_products.load_model_harmonic_component = stack_harmonics(harmonics)
     latitudes, longitudes, mask, residuals_grid, residuals_mean = preprocess_grid(
         load_model=elastic_load_model
@@ -419,49 +435,69 @@ def preprocess_figure_sup_6() -> None:
         "latitudes": latitudes,
         "longitudes": longitudes,
         "mask": mask,
-        "elastic_residuals_grid": residuals_grid,
+        "elastic_residuals_grid": residuals_grid.copy(),
         "elastic_residuals_mean": residuals_mean,
     }
 
     residuals_grid, residuals_mean = process_residuals(
         elastic_load_model=elastic_load_model,
         name=ELASTIC_REFERENCE_LOAD_MODEL_ID,
+        use_backup=use_backup,
         apply_filter=True,
     )
     obj |= {
-        "elastic_filtered_residuals_grid": residuals_grid,
+        "elastic_filtered_residuals_grid": residuals_grid.copy(),
         "elastic_filtered_residuals_mean": residuals_mean,
     }
 
     residuals_grid, residuals_mean = process_residuals(
-        elastic_load_model=elastic_load_model, name=ELASTIC_REFERENCE_LOAD_MODEL_ID, remove_21=True
+        elastic_load_model=elastic_load_model,
+        name=ELASTIC_REFERENCE_LOAD_MODEL_ID,
+        use_backup=use_backup,
+        remove_21=True,
+        apply_filter=True,
     )
     obj |= {
-        "elastic_residuals_grid_without_2_1": residuals_grid,
+        "elastic_residuals_grid_without_2_1": residuals_grid.copy(),
         "elastic_residuals_mean_without_2_1": residuals_mean,
     }
 
+    if use_backup:
+
+        elastic_load_model.base_products.load_model_harmonic_component = stack_harmonics(
+            harmonics=numpy.array(object=backup["anelastic"])[
+                :,
+                : elastic_load_model.load_model_parameters.signature.n_max + 1,
+                : elastic_load_model.load_model_parameters.signature.n_max + 1,
+            ]
+        )
+
     residuals_grid, residuals_mean = process_residuals(
-        elastic_load_model=elastic_load_model, name=ANELASTIC_REFERENCE_LOAD_MODEL_ID
+        elastic_load_model=elastic_load_model,
+        name=ANELASTIC_REFERENCE_LOAD_MODEL_ID,
+        use_backup=use_backup,
     )
     obj |= {
-        "anelastic_residuals_grid": residuals_grid,
+        "anelastic_residuals_grid": residuals_grid.copy(),
         "anelastic_residuals_mean": residuals_mean,
     }
 
     residuals_grid, residuals_mean = process_residuals(
         elastic_load_model=elastic_load_model,
         name=ANELASTIC_REFERENCE_LOAD_MODEL_ID,
+        use_backup=use_backup,
         apply_filter=True,
     )
     obj |= {
-        "anelastic_filtered_residuals_grid": residuals_grid,
+        "anelastic_filtered_residuals_grid": residuals_grid.copy(),
         "anelastic_filtered_residuals_mean": residuals_mean,
     }
 
     residuals_grid, residuals_mean = process_residuals(
         elastic_load_model=elastic_load_model,
         name=ANELASTIC_REFERENCE_LOAD_MODEL_ID,
+        use_backup=use_backup,
+        apply_filter=True,
         remove_21=True,
     )
     obj |= {
@@ -492,6 +528,7 @@ def preprocess_figure_sup_7() -> None:
         ),
         n_max=elastic_load_model.load_model_parameters.signature.n_max,
     )
+    elastic_load_model.load_model_parameters.numerical_parameters.ewh_threshold = None
     latitudes, longitudes, mask, elastic_grid, elastic_mean = preprocess_grid(
         load_model=elastic_load_model
     )
@@ -567,16 +604,14 @@ def preprocess_figure_sup_9() -> None:
     Alpha variations.
     """
 
-    data, parameters = preprocess_dataframe(
+    data, _ = preprocess_dataframe(
         metrics=["ocean_mean_trend_step_5"],
         filter_wanted_values={
-            k: (DEFAULT_FILTER_WANTED_VALUES.get(k) or {"alpha": 0.26}.get(k))
-            for k in DEFAULT_FILTER_WANTED_VALUES.keys() ^ {"alpha": 0.26}.keys()
+            k: value for k, value in DEFAULT_FILTER_WANTED_VALUES.items() if k != "alpha"
         },
         filter_unwanted_values=DEFAULT_FILTER_UNWANTED_VALUES,
     )
     replace_and_save_to_csv(df=data, filepath=figures_path.joinpath("data_alpha.csv"), index=False)
-    save_base_model(obj=parameters, name="figure_sup_9", path=figures_path)
 
 
 def preprocess_figure_sup_10() -> None:
@@ -584,11 +619,12 @@ def preprocess_figure_sup_10() -> None:
     Uniform continental load model variation.
     """
 
-    data, parameters = preprocess_dataframe(
+    data, _ = preprocess_dataframe(
         metrics=["ocean_mean_trend_step_5"],
         filter_wanted_values=DEFAULT_FILTER_WANTED_VALUES
         | {"Uniform\ncontinental load model": True},
         filter_unwanted_values=DEFAULT_FILTER_UNWANTED_VALUES,
     )
-    replace_and_save_to_csv(df=data, filepath=figures_path.joinpath("data_alpha.csv"), index=False)
-    save_base_model(obj=parameters, name="figure_sup_10", path=figures_path)
+    replace_and_save_to_csv(
+        df=data, filepath=figures_path.joinpath("data_uniform.csv"), index=False
+    )

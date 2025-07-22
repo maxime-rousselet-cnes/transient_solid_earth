@@ -13,7 +13,7 @@ from transient_solid_earth import (
     save_base_model,
 )
 
-from .figures_formater_utils import (
+from .figures_data_formater_utils import (
     DEFAULT_FILTER_UNWANTED_VALUES,
     DEFAULT_FILTER_WANTED_VALUES,
     LONG_TERM_MAP,
@@ -58,7 +58,7 @@ def preprocess_figure_1() -> None:
     save_base_model(
         obj={
             "dates": dates,
-            "lower_bound": upper_bound,
+            "lower_bound": lower_bound,
             "mean_curb": mean_curb,
             "upper_bound": upper_bound,
             "latitudes": latitudes,
@@ -102,11 +102,9 @@ def preprocess_figure_2() -> None:
                 spline_number=solid_earth_parameters.numerical_parameters.spline_number,
             )
 
-            eta_m[long_term_model_name]["value"] += (
-                list(
-                    model_layer.evaluate(x=x, variable="eta_m")
-                    * solid_earth_full_numerical_model.viscosity_unit
-                ),
+            eta_m[long_term_model_name]["value"] += list(
+                model_layer.evaluate(x=x, variable="eta_m")
+                * solid_earth_full_numerical_model.viscosity_unit
             )
             eta_m[long_term_model_name]["depth"] += list(
                 (1.0 - x) * solid_earth_parameters.model.radius_unit / 1e3
@@ -136,12 +134,7 @@ def preprocess_figure_2() -> None:
                 spline_number=solid_earth_parameters.numerical_parameters.spline_number,
             )
 
-            q_mu[short_term_model_name]["value"] += (
-                list(
-                    model_layer.evaluate(x=x, variable="q_mu")
-                    * solid_earth_full_numerical_model.viscosity_unit
-                ),
-            )
+            q_mu[short_term_model_name]["value"] += list(model_layer.evaluate(x=x, variable="q_mu"))
             q_mu[short_term_model_name]["depth"] += list(
                 (1.0 - x) * solid_earth_parameters.model.radius_unit / 1e3
             )
@@ -157,13 +150,14 @@ def preprocess_figure_2() -> None:
             spline_number=solid_earth_parameters.numerical_parameters.spline_number,
         )
 
-        mu["value"] += (
-            list(
-                model_layer.evaluate(x=x, variable="mu_0")
-                * solid_earth_full_numerical_model.viscosity_unit
-            ),
+        mu["value"] += list(
+            model_layer.evaluate(x=x, variable="mu_0")
+            * solid_earth_full_numerical_model.viscosity_unit
+            / solid_earth_full_numerical_model.period_unit
         )
         mu["depth"] += list((1.0 - x) * solid_earth_parameters.model.radius_unit / 1e3)
+
+    del eta_m["Mao_Zhong"]
 
     save_base_model(
         obj={
@@ -238,10 +232,10 @@ def preprocess_figure_3() -> None:
 
                     ratio[period][use_long_term_anelasticity][use_short_term_anelasticity][
                         "real"
-                    ] += (list(variable.real),)
+                    ] += list(variable.real)
                     ratio[period][use_long_term_anelasticity][use_short_term_anelasticity][
                         "imag"
-                    ] += (list(variable.imag),)
+                    ] += list(variable.imag)
                     ratio[period][use_long_term_anelasticity][use_short_term_anelasticity][
                         "depth"
                     ] += list((1.0 - x) * solid_earth_parameters.model.radius_unit / 1e3)
@@ -260,7 +254,7 @@ def preprocess_figure_4() -> None:
     """
 
     data, parameters = preprocess_dataframe(
-        metrics=["ocean_mean_trend_step_5"],
+        metrics=["ocean_mean_trend_step_5", "vertical_deformation_ocean_mean_trend"],
         filter_wanted_values=DEFAULT_FILTER_WANTED_VALUES,
         filter_unwanted_values=DEFAULT_FILTER_UNWANTED_VALUES,
     )

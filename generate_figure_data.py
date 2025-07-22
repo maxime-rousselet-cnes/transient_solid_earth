@@ -1,5 +1,5 @@
 """
-Plots all needed figures for the 2025 paper.
+Preprocesses all needed data for figures for the 2025 paper.
 """
 
 from figures import (
@@ -28,8 +28,6 @@ if __name__ == "__main__":
     preprocess_figure_sup_1()
     preprocess_figure_sup_2()
     preprocess_figure_sup_3()
-    preprocess_figure_sup_4()
-    preprocess_figure_sup_5()
     preprocess_figure_sup_4()
     preprocess_figure_sup_5()
     preprocess_figure_sup_6()

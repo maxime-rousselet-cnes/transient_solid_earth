@@ -145,7 +145,9 @@ def load_polar_motion_time_series(
             float(k) for k in [string for string in line.split(" ") if not (string in ["", "\n"])]
         ]
         dates += [items[0]]
+
         for component in pole_motion:
+
             sup_index = 0 if component == "m_1" else 2
             mean_pole = MEAN_POLE_COEFFICIENTS[
                 load_model_parameters.history.pole.mean_pole_convention
@@ -175,6 +177,7 @@ def load_polar_motion_time_series(
     m_2 = numpy.array(object=pole_motion["m_2"], dtype=float) - pole_motion["m_2"][0]
 
     if load_model_parameters.history.pole.filter_wobble:
+
         m_1, m_2, polar_time_series_dates = filter_wobble(
             m_1=m_1,
             m_2=m_2,
