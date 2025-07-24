@@ -62,7 +62,7 @@
             "continents": "geopandas-continents.zip",
             "buffer_distance": 300,
             "first_year_for_recent_trend": 2003,
-            "last_year_for_recent_trend": 2023,
+            "last_year_for_recent_trend": 2022,
             "first_year_for_past_trend": 1900,
             "last_year_for_past_trend": 2003,
             "past_trend_error": 1e-3
@@ -93,7 +93,7 @@
         "signature": {
             "opposite_load_on_continents": false,
             "n_max": 90,
-            "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
+            "file": "CSR"
         },
         "options": {
             "compute_residuals": true,
@@ -110,7 +110,8 @@
                     ],
                     "inversion_components": true
                 }
-            }
+            },
+            "time_dependent": true
         }
     },
     "solid_earth_variabilities": {
@@ -138,20 +139,9 @@
         }
     },
     "load_model_variabilities": {
-        "history": {
-            "lia": {
-                "use": [
-                    true,
-                    false
-                ]
-            }
-        },
         "signature": {
             "file": [
-                "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv",
-                "GFZ",
-                "CSR",
-                "JPL"
+                "MSSA"
             ]
         }
     },

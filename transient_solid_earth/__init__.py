@@ -61,7 +61,7 @@ from .paths import (
     logs_subpaths,
     tables_path,
 )
-from .polar_tide import elastic_polar_tide_correction_back
+from .pole_tide import elastic_pole_tide_correction_back
 from .separators import (
     LAYERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
@@ -70,6 +70,7 @@ from .separators import (
 )
 from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
 from .solid_earth_time_dependent_numerical_model import SolidEarthTimeDependentNumericalModel
+from .trends import get_ocean_mean_trend
 from .worker_parser import parse_worker_information
 
 objects = [
@@ -120,12 +121,13 @@ objects = [
     loads_path,
     logs_subpaths,
     tables_path,
-    elastic_polar_tide_correction_back,
+    elastic_pole_tide_correction_back,
     LAYERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR,
     VALUES_SEPARATOR,
     SolidEarthFullNumericalModel,
     SolidEarthTimeDependentNumericalModel,
+    get_ocean_mean_trend,
     parse_worker_information,
 ]

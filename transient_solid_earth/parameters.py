@@ -316,7 +316,7 @@ class LoadModelPoleParameters(BaseModel):
     Defines all parameters for the pole time series.
     """
 
-    use: bool = True  # Whether to performs Wahr (2015) recommended polar tide correction.
+    use: bool = True  # Whether to performs Wahr (2015) recommended pole tide correction.
     file: str = "pole"  # (.csv) file path relative to data/pole_data.
     mean_pole_convention: str = "IERS_2018_update"  # IERS_2010, IERS_2018_update, etc...
     case: str = "mean"  # Whether "lower", "mean" or "upper".
@@ -382,6 +382,7 @@ class LoadModelOptionParameters(BaseModel):
     compute_residuals: bool = False
     invert_for_j_2: bool = False
     save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
+    time_dependent: bool = False
 
 
 DEFAULT_LOAD_MODEL_OPTION_PARAMETERS = LoadModelOptionParameters()

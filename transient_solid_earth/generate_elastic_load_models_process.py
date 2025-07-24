@@ -17,7 +17,7 @@ from .formating import (
     generate_full_signal,
     load_barystatic_load_model,
     load_load_model_harmonic_component,
-    load_polar_motion_time_series,
+    load_pole_motion_time_series,
 )
 from .parameters import LoadModelParameters
 from .paths import elastic_load_model_parameters_subpath
@@ -70,7 +70,7 @@ def get_time_dependent_components(
 
 def get_time_dependent_m(
     load_model_parameters: LoadModelParameters,
-    polar_motion_dates: numpy.ndarray[float],
+    pole_motion_dates: numpy.ndarray[float],
     m: numpy.ndarray[float],
     target_full_dates: numpy.ndarray[float],
 ) -> numpy.ndarray[float]:
@@ -80,7 +80,7 @@ def get_time_dependent_m(
 
     full_dates, anti_symmetric_m, _ = generate_anti_symmetric_signal_model(
         load_model_parameters=load_model_parameters,
-        dates=polar_motion_dates,
+        dates=pole_motion_dates,
         signal=m,
     )
     (
@@ -100,7 +100,7 @@ def get_time_dependent_m(
 
 def generate_time_dependent_products(
     load_model_parameters: LoadModelParameters,
-    polar_motion_dates: numpy.ndarray[float],
+    pole_motion_dates: numpy.ndarray[float],
     m_1: numpy.ndarray[float],
     m_2: numpy.ndarray[float],
 ) -> tuple[TemporalProducts, numpy.ndarray[float], SideProducts]:
@@ -118,13 +118,13 @@ def generate_time_dependent_products(
     ) = get_time_dependent_components(load_model_parameters=load_model_parameters)
     time_dependent_m_1 = get_time_dependent_m(
         load_model_parameters=load_model_parameters,
-        polar_motion_dates=polar_motion_dates,
+        pole_motion_dates=pole_motion_dates,
         m=m_1,
         target_full_dates=full_load_model_dates,
     )
     time_dependent_m_2 = get_time_dependent_m(
         load_model_parameters=load_model_parameters,
-        polar_motion_dates=polar_motion_dates,
+        pole_motion_dates=pole_motion_dates,
         m=m_2,
         target_full_dates=full_load_model_dates,
     )
@@ -163,8 +163,8 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
         ocean_land_buffered_mask,
     ) = load_load_model_harmonic_component(load_model_parameters=load_model_parameters)
 
-    # Polar motion
-    polar_motion_dates, m_1, m_2 = load_polar_motion_time_series(
+    # Pole motion
+    pole_motion_dates, m_1, m_2 = load_pole_motion_time_series(
         load_model_parameters=load_model_parameters
     )
 
@@ -175,7 +175,7 @@ def worker_generate_elastic_load_models(worker_information: WorkerInformation) -
         side_products,
     ) = generate_time_dependent_products(
         load_model_parameters=load_model_parameters,
-        polar_motion_dates=polar_motion_dates,
+        pole_motion_dates=pole_motion_dates,
         m_1=m_1,
         m_2=m_2,
     )

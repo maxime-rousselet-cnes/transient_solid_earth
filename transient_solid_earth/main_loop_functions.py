@@ -36,7 +36,8 @@ from .paths import (
     harmonic_vertical_displacement_trends_path,
     interpolated_love_numbers_path,
 )
-from .polar_tide import polar_motion_correction
+from .pole_tide import pole_motion_correction
+from .time_dependent_load_model import generate_time_dependent_elastic_load_model
 from .trends import (
     get_ocean_mean_trend,
     get_trend_from_period_dependent_harmonic_model,
@@ -217,7 +218,7 @@ def anelastic_load_model_re_estimation_processing_steps(
 ) -> tuple[list[float], dict[str, float]]:
     """
     In a Newton's method loop to normalize the past barystatic trend, performs:
-        -   Anelastic self-coherent time-dependent polar tide correction.
+        -   Anelastic self-coherent time-dependent pole tide correction.
         -   Anelastic self-coherent load model re-estimation using the potential load Love number
             on all degrees.
         -   Anelastic self-coherent degree one inversion.
@@ -265,6 +266,19 @@ def anelastic_load_model_re_estimation_processing_steps(
         )
 
         # Step 1: unmodified normalized signal (mm).
+        """
+        TODO:
+        if elastic_load_model.load_model_parameters.options.time_dependent:
+
+            period_dependent_harmonic_load_model_steps[0] = (
+                generate_time_dependent_elastic_load_model(
+                    elastic_load_model=elastic_load_model, elastic_love_numbers=elastic_love_numbers
+                )
+            )
+
+        else:
+        """
+
         period_dependent_harmonic_load_model_steps[0] = numpy.tensordot(
             # (yr) := (mm) / (mm/yr).
             a=fft(elastic_load_model.base_products.time_dependent_component)
@@ -277,7 +291,7 @@ def anelastic_load_model_re_estimation_processing_steps(
             axes=0,
         )
 
-        # Step 2: Signal corrected from the polar tide.
+        # Step 2: Signal corrected from the pole tide.
         period_dependent_harmonic_load_model_steps[1] = numpy.array(
             object=period_dependent_harmonic_load_model_steps[0]
         ).copy()
@@ -430,6 +444,14 @@ def post_process_intermediate_load_model_products(
                 path=anelastic_load_models_path.joinpath("step_" + str(i_step + 1)),
             )
 
+    if elastic_load_model.load_model_parameters.options.time_dependent:
+
+        save_base_model(
+            obj=numpy.real(ifft(period_dependent_harmonic_load_model_steps[-1], axis=0)),
+            name=anelastic_load_model_id,
+            path=anelastic_load_models_path.joinpath("time_dependent"),
+        )
+
     # Eventually saves the degree one inversion comonents.
     if elastic_load_model.load_model_parameters.options.save_options.inversion_components:
 
@@ -530,14 +552,14 @@ def anelastic_load_model_re_estimation_processing_loop(
 
         if not is_in_table(table_name="anelastic_load_models", id_to_check=anelastic_load_model_id):
 
-            # Memorizes the anelastic polar tide correction series before the normalization loop.
-            c_2_1_pt_se_complex, s_2_1_pt_se_complex = polar_motion_correction(
+            # Memorizes the anelastic pole tide correction series before the normalization loop.
+            c_2_1_pt_se_complex, s_2_1_pt_se_complex = pole_motion_correction(
                 m_1=elastic_load_model.side_products.time_dependent_m_1,
                 m_2=elastic_load_model.side_products.time_dependent_m_2,
                 love_numbers=anelastic_love_numbers,
             )
 
-            # Saves the anelastic polar tide correction time series for post-processing purposes.
+            # Saves the anelastic pole tide correction time series for post-processing purposes.
             for complex_signal, name in zip(
                 [c_2_1_pt_se_complex, s_2_1_pt_se_complex], ["C_2_1", "S_2_1"]
             ):

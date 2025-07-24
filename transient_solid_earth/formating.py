@@ -102,7 +102,7 @@ def convolve(a: numpy.ndarray[float], v: numpy.ndarray[float]) -> numpy.ndarray[
 def filter_wobble(
     m_1: numpy.ndarray[float],
     m_2: numpy.ndarray[float],
-    polar_time_series_dates: numpy.ndarray[float],
+    pole_time_series_dates: numpy.ndarray[float],
     load_model_parameters: LoadModelParameters,
 ) -> tuple[numpy.ndarray[float], numpy.ndarray[float], numpy.ndarray[float]]:
     """
@@ -113,14 +113,14 @@ def filter_wobble(
     kernel = numpy.ones(shape=[kernel_length]) / kernel_length
     m_1 = convolve(a=m_1, v=kernel)
     m_2 = convolve(a=m_2, v=kernel)
-    polar_time_series_dates = numpy.linspace(
-        start=polar_time_series_dates[0], stop=polar_time_series_dates[-1], num=len(m_1)
+    pole_time_series_dates = numpy.linspace(
+        start=pole_time_series_dates[0], stop=pole_time_series_dates[-1], num=len(m_1)
     )
 
-    return m_1, m_2, polar_time_series_dates
+    return m_1, m_2, pole_time_series_dates
 
 
-def load_polar_motion_time_series(
+def load_pole_motion_time_series(
     load_model_parameters: LoadModelParameters,
     path: Path = pole_data_path,
     i: int = 1,  # Column factor.
@@ -172,20 +172,20 @@ def load_polar_motion_time_series(
                 )
             ]
 
-    polar_time_series_dates = numpy.array(object=dates, dtype=float)
+    pole_time_series_dates = numpy.array(object=dates, dtype=float)
     m_1 = numpy.array(object=pole_motion["m_1"], dtype=float) - pole_motion["m_1"][0]
     m_2 = numpy.array(object=pole_motion["m_2"], dtype=float) - pole_motion["m_2"][0]
 
     if load_model_parameters.history.pole.filter_wobble:
 
-        m_1, m_2, polar_time_series_dates = filter_wobble(
+        m_1, m_2, pole_time_series_dates = filter_wobble(
             m_1=m_1,
             m_2=m_2,
-            polar_time_series_dates=polar_time_series_dates,
+            pole_time_series_dates=pole_time_series_dates,
             load_model_parameters=load_model_parameters,
         )
     return (
-        polar_time_series_dates,
+        pole_time_series_dates,
         MILLI_ARC_SECOND_TO_RADIANS * m_1,
         MILLI_ARC_SECOND_TO_RADIANS * m_2,
     )
@@ -336,7 +336,11 @@ def load_grace_file(file: Path) -> numpy.ndarray[float]:
     # Gets raw data.
     df = pandas.read_csv(
         filepath_or_buffer=file,
-        skiprows=(SKIPROWS[None] if file.name not in SKIPROWS else SKIPROWS[file.name]),
+        skiprows=(
+            (SKIPROWS[None] if "MSSA" not in file.name else 11)
+            if file.name not in SKIPROWS
+            else SKIPROWS[file.name]
+        ),
         sep=";",
     )
 

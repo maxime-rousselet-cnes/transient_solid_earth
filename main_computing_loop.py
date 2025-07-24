@@ -18,7 +18,7 @@ from transient_solid_earth import (
     clear_path,
     create_all_model_variations,
     elastic_load_models_path,
-    elastic_polar_tide_correction_back,
+    elastic_pole_tide_correction_back,
     generate_degrees_list,
     generate_elastic_load_models_parallel_loop,
     get_period_interpolation_basis,
@@ -30,9 +30,9 @@ from transient_solid_earth import (
     tables_path,
 )
 
-CLEAR = {"love_numbers": False, "generate_elastic_load_models": False}
+CLEAR = {"love_numbers": False, "generate_elastic_load_models": True}
 CLEAR["interpolate_love_numbers"] = CLEAR["generate_elastic_load_models"]
-CLEAR["anelastic_load_models"] = False
+CLEAR["anelastic_load_models"] = True
 
 if __name__ == "__main__":
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
             for elastic_load_model_id in elastic_load_model_ids:
 
                 elastic_load_model = elastic_load_models[elastic_load_model_id]
-                elastic_polar_tide_correction_back(
+                elastic_pole_tide_correction_back(
                     elastic_load_model=elastic_load_model, elastic_love_numbers=elastic_love_numbers
                 )
 

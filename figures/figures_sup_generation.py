@@ -785,7 +785,7 @@ def generate_figure_sup_8(figsize: tuple[float, float] = (8, 16)) -> None:
         ticks=range(5),
         labels=[
             "Initial\nsignal",
-            "With polar tide\ncorrection",
+            "With pole tide\ncorrection",
             "Anelasticity\nre-estimation",
             "With degree\none inversion",
             "With leakage\ncorrection",
