@@ -266,8 +266,6 @@ def anelastic_load_model_re_estimation_processing_steps(
         )
 
         # Step 1: unmodified normalized signal (mm).
-        """
-        TODO:
         if elastic_load_model.load_model_parameters.options.time_dependent:
 
             period_dependent_harmonic_load_model_steps[0] = (
@@ -277,19 +275,17 @@ def anelastic_load_model_re_estimation_processing_steps(
             )
 
         else:
-        """
-
-        period_dependent_harmonic_load_model_steps[0] = numpy.tensordot(
-            # (yr) := (mm) / (mm/yr).
-            a=fft(elastic_load_model.base_products.time_dependent_component)
-            / get_trend_from_signal(
-                signal=elastic_load_model.base_products.time_dependent_component,
-                elastic_load_model=elastic_load_model,
-            ),
-            # (mm/yr).
-            b=elastic_load_model.base_products.load_model_harmonic_component,
-            axes=0,
-        )
+            period_dependent_harmonic_load_model_steps[0] = numpy.tensordot(
+                # (yr) := (mm) / (mm/yr).
+                a=fft(elastic_load_model.base_products.time_dependent_component)
+                / get_trend_from_signal(
+                    signal=elastic_load_model.base_products.time_dependent_component,
+                    elastic_load_model=elastic_load_model,
+                ),
+                # (mm/yr).
+                b=elastic_load_model.base_products.load_model_harmonic_component,
+                axes=0,
+            )
 
         # Step 2: Signal corrected from the pole tide.
         period_dependent_harmonic_load_model_steps[1] = numpy.array(
@@ -444,7 +440,7 @@ def post_process_intermediate_load_model_products(
                 path=anelastic_load_models_path.joinpath("step_" + str(i_step + 1)),
             )
 
-    if elastic_load_model.load_model_parameters.options.time_dependent:
+    if elastic_load_model.load_model_parameters.options.save_time_dependent:
 
         save_base_model(
             obj=numpy.real(ifft(period_dependent_harmonic_load_model_steps[-1], axis=0)),

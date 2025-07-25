@@ -93,7 +93,7 @@
         "signature": {
             "opposite_load_on_continents": false,
             "n_max": 90,
-            "file": "CSR"
+            "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
         },
         "options": {
             "compute_residuals": true,
@@ -111,7 +111,8 @@
                     "inversion_components": true
                 }
             },
-            "time_dependent": true
+            "time_dependent": false,
+            "save_time_dependent":true
         }
     },
     "solid_earth_variabilities": {

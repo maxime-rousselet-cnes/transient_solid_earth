@@ -98,17 +98,6 @@ def generate_time_dependent_elastic_load_model(
     time_dependent_load_model[-elastic_load_model.side_products.recent_trend_indices] = (
         -time_dependent_load_model[elastic_load_model.side_products.recent_trend_indices]
     )
-    from matplotlib.pyplot import plot, show
-
-    plot(
-        [
-            get_ocean_mean_trend(
-                harmonic_load_model_trend=harmonic_slice, elastic_load_model=elastic_load_model
-            )
-            for harmonic_slice in time_dependent_load_model
-        ]
-    )
-    show()
     time_dependent_load_model = fft(time_dependent_load_model, axis=0)
 
     return time_dependent_load_model

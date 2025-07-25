@@ -383,6 +383,7 @@ class LoadModelOptionParameters(BaseModel):
     invert_for_j_2: bool = False
     save_options: LoadSaveOptionParameters = DEFAULT_LOAD_SAVE_OPTION_PARAMETERS
     time_dependent: bool = False
+    save_time_dependent: bool = False
 
 
 DEFAULT_LOAD_MODEL_OPTION_PARAMETERS = LoadModelOptionParameters()
