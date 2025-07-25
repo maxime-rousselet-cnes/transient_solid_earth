@@ -112,7 +112,7 @@
                 }
             },
             "time_dependent": false,
-            "save_time_dependent":true
+            "save_time_dependent": true
         }
     },
     "solid_earth_variabilities": {
@@ -139,13 +139,7 @@
             }
         }
     },
-    "load_model_variabilities": {
-        "signature": {
-            "file": [
-                "MSSA"
-            ]
-        }
-    },
+    "load_model_variabilities": {},
     "parallel_computing": {
         "job_array_max_file_size": 1000,
         "max_concurrent_threads_factor": 4,

@@ -70,7 +70,7 @@ from .separators import (
 )
 from .solid_earth_full_numerical_model import SolidEarthFullNumericalModel
 from .solid_earth_time_dependent_numerical_model import SolidEarthTimeDependentNumericalModel
-from .trends import get_ocean_mean_trend
+from .trends import get_ocean_mean_trend, trend
 from .worker_parser import parse_worker_information
 
 objects = [
@@ -129,5 +129,6 @@ objects = [
     SolidEarthFullNumericalModel,
     SolidEarthTimeDependentNumericalModel,
     get_ocean_mean_trend,
+    trend,
     parse_worker_information,
 ]
