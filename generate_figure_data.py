@@ -17,6 +17,7 @@ from figures import (
     preprocess_figure_sup_8,
     preprocess_figure_sup_9,
     preprocess_figure_sup_10,
+    preprocess_figure_sup_11,
 )
 
 if __name__ == "__main__":
@@ -35,3 +36,4 @@ if __name__ == "__main__":
     preprocess_figure_sup_8()
     preprocess_figure_sup_9()
     preprocess_figure_sup_10()
+    preprocess_figure_sup_11()

@@ -6,7 +6,7 @@ import numpy
 from cartopy.crs import Robinson
 from cartopy.mpl.geoaxes import GeoAxes
 from matplotlib.axes import Axes
-from matplotlib.pyplot import Figure, figure, setp, text
+from matplotlib.pyplot import Figure, figure, setp, subplots, text
 
 from transient_solid_earth import load_base_model
 
@@ -913,3 +913,84 @@ def generate_figure_sup_10(figsize: tuple[float, float] = (6, 4)) -> None:
     ax1.legend(frameon=False, fontsize=FONTSIZE)
 
     fig.savefig(figures_path.joinpath("figure_sup_10.svg"), format="svg")
+
+
+def generate_figure_sup_11(figsize: tuple[float, float] = (6, 2.5)) -> None:
+    """
+    2025's article.
+    """
+
+    ax1: Axes
+    ax2: Axes
+    fig, (ax1, ax2) = subplots(1, 2, figsize=(12, 4), sharex=True)
+    data = load_base_model(name="figure_sup_11", path=figures_path)
+
+    ax1.plot(
+        data["dates"],
+        data["series_e"],
+        label="purely elastic model",
+        color="blue",
+    )
+    ax1.plot(
+        data["dates"],
+        data["series_a"],
+        label="reference model",
+        color="red",
+    )
+    ax1.tick_params(
+        axis="both", which="both", length=6, direction="inout", labelsize=FONTSIZE_TICKLABELS
+    )
+    ax1.legend(frameon=False)
+    ax1.set_ylabel("mm")
+    ax1.set_xlabel("yr")
+    ax1.text(
+        -0.1,
+        1.1,
+        "A.",
+        transform=ax1.transAxes,
+        fontsize=FONTSIZE_PANEL_TITLES,
+        fontweight="bold",
+    )
+
+    ax2.plot(data["dates"], data["d"], label="difference: anelastic - elastic", color="black")
+    ax2.plot(
+        data["dates"],
+        numpy.array(object=data["quadratic"]) * numpy.array(object=data["trend_dates"]) ** 2
+        + numpy.array(object=data["linear_from_quadratic"])
+        * numpy.array(object=data["trend_dates"]),
+        label="Quadratic fit\nRMS = " + str(data["rms_from_quadratic"])[1:5] + " mm",
+        color="orange",
+        linestyle="--",
+    )
+    ax2.plot(
+        data["dates"],
+        numpy.array(object=data["linear"]) * numpy.array(object=data["trend_dates"]),
+        label="Linear fit\nRMS = " + str(data["rms_from_linear"])[1:5] + " mm",
+        color="black",
+        linestyle="--",
+    )
+    ax2.hlines(
+        y=[4],
+        xmin=2003,
+        xmax=2022,
+        linestyles="--",
+        color="blue",
+        label="observational uncertainty",
+    )
+    ax2.tick_params(
+        axis="both", which="both", length=6, direction="inout", labelsize=FONTSIZE_TICKLABELS
+    )
+    ax2.legend(frameon=False)
+    ax2.set_ylabel("mm")
+    ax2.set_xlabel("yr")
+    ax2.set_xticks(ticks=range(2003, 2023, 3))
+    ax2.text(
+        -0.1,
+        1.1,
+        "B.",
+        transform=ax2.transAxes,
+        fontsize=FONTSIZE_PANEL_TITLES,
+        fontweight="bold",
+    )
+
+    fig.savefig(figures_path.joinpath("figure_sup_11.svg"), format="svg")

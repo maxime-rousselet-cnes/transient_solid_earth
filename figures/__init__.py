@@ -25,6 +25,7 @@ from .figures_sup_data_formater import (
     preprocess_figure_sup_8,
     preprocess_figure_sup_9,
     preprocess_figure_sup_10,
+    preprocess_figure_sup_11,
 )
 from .figures_sup_generation import (
     generate_figure_sup_1,
@@ -37,6 +38,7 @@ from .figures_sup_generation import (
     generate_figure_sup_8,
     generate_figure_sup_9,
     generate_figure_sup_10,
+    generate_figure_sup_11,
 )
 
 objects = [
@@ -58,6 +60,7 @@ objects = [
     preprocess_figure_sup_8,
     preprocess_figure_sup_9,
     preprocess_figure_sup_10,
+    preprocess_figure_sup_11,
     generate_figure_sup_1,
     generate_figure_sup_2,
     generate_figure_sup_3,
@@ -68,4 +71,5 @@ objects = [
     generate_figure_sup_8,
     generate_figure_sup_9,
     generate_figure_sup_10,
+    generate_figure_sup_11,
 ]

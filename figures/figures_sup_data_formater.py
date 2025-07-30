@@ -14,6 +14,7 @@ from transient_solid_earth import (
     adaptative_step_parallel_computing_loop,
     anelastic_load_models_path,
     create_all_model_variations,
+    get_ocean_mean_trend,
     get_periods,
     harmonic_geoid_deformation_trends_path,
     harmonic_residual_trends_path,
@@ -596,7 +597,6 @@ def preprocess_figure_sup_8() -> None:
     replace_and_save_to_csv(
         df=data, filepath=figures_path.joinpath("data_all_steps.csv"), index=False
     )
-    save_base_model(obj=parameters, name="figure_sup_8", path=figures_path)
 
 
 def preprocess_figure_sup_9() -> None:
@@ -627,4 +627,85 @@ def preprocess_figure_sup_10() -> None:
     )
     replace_and_save_to_csv(
         df=data, filepath=figures_path.joinpath("data_uniform.csv"), index=False
+    )
+
+
+def get_ocean_time_series(
+    solution: numpy.ndarray,
+    elastic_load_model: ElasticLoadModel,
+) -> tuple[numpy.ndarray, numpy.ndarray]:
+    """
+    Plots recent time-span.
+    """
+
+    series = numpy.array(
+        object=[
+            get_ocean_mean_trend(
+                harmonic_load_model_trend=harmonic_slice, elastic_load_model=elastic_load_model
+            )
+            for harmonic_slice in solution[elastic_load_model.side_products.recent_trend_indices]
+        ]
+    )
+
+    return (
+        elastic_load_model.base_products.temporal_products.full_load_model_dates[
+            elastic_load_model.side_products.recent_trend_indices
+        ],
+        series - series[0],
+    )
+
+
+def preprocess_figure_sup_11() -> None:
+    """
+    Linear rate between reference cases.
+    """
+
+    elastic_load_model = load_elastic_load_model(model_id="968c9070db")
+    e = numpy.array(
+        object=load_base_model(
+            name="95b25974d5", path=anelastic_load_models_path.joinpath("time_dependent")
+        )
+    )
+    a = numpy.array(
+        object=load_base_model(
+            name="e60b5bdeee", path=anelastic_load_models_path.joinpath("time_dependent")
+        )
+    )
+    dates, series_e = get_ocean_time_series(solution=e, elastic_load_model=elastic_load_model)
+    dates, series_a = get_ocean_time_series(solution=a, elastic_load_model=elastic_load_model)
+    d = series_a - series_e
+    trend_dates = dates - dates[0]
+    a_matrix = numpy.vstack(
+        [
+            trend_dates**2,
+            trend_dates,
+        ]
+    ).T
+    result: numpy.ndarray = numpy.linalg.pinv(a_matrix).dot(d[:, None])
+    quadratic, linear_from_quadratic = result.flatten()
+    rms_from_quadratic = sum((a_matrix.dot(result) - d[:, None]) ** 2) ** 0.5
+    a_matrix = numpy.vstack(
+        [
+            trend_dates,
+        ]
+    ).T
+    result: numpy.ndarray = numpy.linalg.pinv(a_matrix).dot(d[:, None])
+    linear = result.flatten()
+    rms_from_linear = sum((a_matrix.dot(result) - d[:, None]) ** 2) ** 0.5
+
+    save_base_model(
+        obj={
+            "dates": dates,
+            "trend_dates": trend_dates,
+            "d": d,
+            "series_e": series_e,
+            "series_a": series_a,
+            "quadratic": quadratic,
+            "linear_from_quadratic": linear_from_quadratic,
+            "rms_from_quadratic": rms_from_quadratic,
+            "linear": linear,
+            "rms_from_linear": rms_from_linear,
+        },
+        name="figure_sup_11",
+        path=figures_path,
     )
