@@ -32,15 +32,15 @@ def generate_time_dependent_elastic_load_model(
         elastic_load_model.side_products.recent_trend_indices
     ]
     recent_harmonics = interpolate.interp1d(x=times, y=harmonics, axis=0)(x=recent_dates)
-    c_2_1_elastic_pole_tide, s_2_1_elastic_pole_tide = pole_motion_correction(
+    stokes_to_ewh_factor, c_2_1_elastic_pole_tide, s_2_1_elastic_pole_tide = pole_motion_correction(
         m_1=elastic_load_model.side_products.time_dependent_m_1,
         m_2=elastic_load_model.side_products.time_dependent_m_2,
         love_numbers=elastic_love_numbers,
     )
-    recent_harmonics[:, 2, 1] += numpy.real(ifft(c_2_1_elastic_pole_tide))[
+    recent_harmonics[:, 2, 1] += numpy.real(ifft(stokes_to_ewh_factor * c_2_1_elastic_pole_tide))[
         elastic_load_model.side_products.recent_trend_indices
     ]
-    recent_harmonics[:, -3, -2] += numpy.real(ifft(s_2_1_elastic_pole_tide))[
+    recent_harmonics[:, -3, -2] += numpy.real(ifft(stokes_to_ewh_factor * s_2_1_elastic_pole_tide))[
         elastic_load_model.side_products.recent_trend_indices
     ]
     time_dependent_load_model = numpy.tensordot(

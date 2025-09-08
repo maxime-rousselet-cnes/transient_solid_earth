@@ -14,7 +14,7 @@ def pole_motion_correction(
     m_1: numpy.ndarray[float],
     m_2: numpy.ndarray[float],
     love_numbers: numpy.ndarray[float],
-) -> tuple[numpy.ndarray, numpy.ndarray]:
+) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     """
     Computes pole tide correction time series coherent with the given rheological model.
     """
@@ -37,8 +37,9 @@ def pole_motion_correction(
     coherent_pole_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=numpy.complex64)
 
     return (
-        stokes_to_ewh_factor * fft(coherent_pole_motion.real),  # C_2_1 frequencial correction.
-        stokes_to_ewh_factor * fft(coherent_pole_motion.imag),  # S_2_1 frequencial correction.
+        stokes_to_ewh_factor,
+        fft(coherent_pole_motion.real),  # C_2_1 frequencial correction.
+        fft(coherent_pole_motion.imag),  # S_2_1 frequencial correction.
     )
 
 
@@ -50,17 +51,17 @@ def elastic_pole_tide_correction_back(
     correction.
     """
 
-    c_2_1_elastic_pole_tide, s_2_1_elastic_pole_tide = pole_motion_correction(
+    stokes_to_ewh_factor, c_2_1_elastic_pole_tide, s_2_1_elastic_pole_tide = pole_motion_correction(
         m_1=elastic_load_model.side_products.time_dependent_m_1,
         m_2=elastic_load_model.side_products.time_dependent_m_2,
         love_numbers=elastic_love_numbers,
     )
     base_products = elastic_load_model.base_products
     base_products.load_model_harmonic_component[2, 1] += get_trend_from_complex_signal(
-        signal=c_2_1_elastic_pole_tide,
+        signal=stokes_to_ewh_factor * c_2_1_elastic_pole_tide,
         elastic_load_model=elastic_load_model,
     )
     base_products.load_model_harmonic_component[-3, -2] += get_trend_from_complex_signal(
-        signal=s_2_1_elastic_pole_tide,
+        signal=stokes_to_ewh_factor * s_2_1_elastic_pole_tide,
         elastic_load_model=elastic_load_model,
     )

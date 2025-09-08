@@ -11,6 +11,7 @@ from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, TwoSlopeNorm
+from matplotlib.lines import Line2D
 from numpy.ma import MaskedArray
 from pandas import DataFrame
 
@@ -27,25 +28,19 @@ FONTSIZE = 12
 LINEWIDTH = 3
 SIZE = 30
 
-# Define start and end colors
-grey_color = numpy.array((220, 220, 220)) / 255.0
-brown_color = numpy.array((215, 179, 128)) / 255.0
-
 # Generate interpolated colors
 LAYER_COLORS = {
-    " Lower Mantle": grey_color * 0.6 + brown_color * 0.4,
-    " Upper Mantle": grey_color * 0.4 + brown_color * 0.6,
-    "Asthenosphere": brown_color,
-    "   Lithosphere": grey_color * 0.8 + brown_color * 0.2,
-    "       Crust": grey_color,
+    " Lower Mantle": (248 / 255, 246 / 255, 246 / 255),
+    " Upper Mantle": (255 / 255, 239 / 255, 217 / 255),
+    "Asthenosphere": (255 / 255, 245 / 255, 232 / 255),
+    "   Lithosphere": (243 / 255, 246 / 255, 246 / 255),
+    "       Crust": (244 / 255, 241 / 255, 236 / 255),
 }
 
-# Blue: 30,144,255
-# Green: 50,205,50
-ELASTIC_COLOR = numpy.array((0, 150, 0)) / 255.0
-LONG_TERM_COLOR = numpy.array((91, 60, 104)) / 255.0
-SHORT_TERM_COLOR = numpy.array((0, 0, 255)) / 255.0
-REFERENCE_RED = numpy.array((255, 0, 0)) / 255.0
+ELASTIC_COLOR = numpy.array((34, 139, 34)) / 255.0
+LONG_TERM_COLOR = numpy.array((31, 78, 121)) / 255.0
+SHORT_TERM_COLOR = numpy.array((92, 75, 139)) / 255.0
+REFERENCE_RED = numpy.array((199, 48, 43)) / 255.0
 
 OPTION_COLORS = numpy.array(
     [
@@ -60,10 +55,10 @@ SHORT_TERM_COLORS = (
     numpy.array(
         [
             255 * REFERENCE_RED,
-            (55, 21, 233),
-            (95, 191, 249),
-            (88, 99, 248),
-            255 * SHORT_TERM_COLOR,
+            (0, 72, 172),
+            (170, 181, 217),
+            (32, 121, 190),
+            (0, 72, 172),
         ]
     )
     / 255.0
@@ -71,18 +66,11 @@ SHORT_TERM_COLORS = (
 
 LONG_TERM_COLORS = (
     numpy.array(
-        [
-            255 * REFERENCE_RED,
-            (113, 74, 130),
-            (136, 89, 155),
-            (147, 100, 166),
-            255 * LONG_TERM_COLOR,
-        ]
+        [255 * REFERENCE_RED, (113, 74, 130), (136, 89, 155), (147, 100, 166), (91, 60, 104)]
     )
     / 255.0
 )
-REFERENCE_RED = numpy.array((255, 0, 0)) / 255.0
-BACKGROUND_ALPHA = 0.4
+REFERENCE_RED = numpy.array((199, 48.0, 43.0)) / 255.0
 
 MAIN_LAYER_DEPTHS = {
     " Lower Mantle": (2891.0, 670.0),
@@ -251,7 +239,7 @@ def get_reference_values(
     return reference_values
 
 
-def add_reference_values_and_altimetry(df: DataFrame, ax2: Axes, data: dict) -> None:
+def add_reference_values_and_altimetry(df: DataFrame, ax2: Axes, ax3: Axes, data: dict) -> None:
     """
     Sub-functions.
     """
@@ -265,22 +253,21 @@ def add_reference_values_and_altimetry(df: DataFrame, ax2: Axes, data: dict) -> 
         - reference_values["elastic"]["vertical_deformation_ocean_mean_trend"]
     )
     ax2.scatter(
-        x=ANELASTICITY_OPTIONS + ["Altimetry-ARGO"],
-        y=[reference_values[option]["ocean_mean_trend_step_5"] for option in ANELASTICITY_OPTIONS]
-        + [
-            JASON3_DRIFT_CORRECTED_MINUS_ARGO_PLUS_ABS_OBD - odb_anelastic_elastic_correction,
-        ],
+        x=ANELASTICITY_OPTIONS,
+        y=[reference_values[option]["ocean_mean_trend_step_5"] for option in ANELASTICITY_OPTIONS],
         label="reference model",
         s=SIZE,
         marker="*",
         color=REFERENCE_RED,
+        zorder=10,
     )
+    ax2.legend(frameon=False, fontsize=LABELSIZE, loc="upper left")
     odb_anelastic_elastic_correction = list(odb_anelastic_elastic_correction)
-    boxprops = {"color": REFERENCE_RED, "linewidth": 2, "alpha": 0.5}
-    medianprops = {"color": REFERENCE_RED, "linewidth": 2}
-    whiskerprops = {"color": REFERENCE_RED, "linewidth": 2, "alpha": 0.5}
-    capprops = {"color": REFERENCE_RED, "linewidth": 2, "alpha": 0.5}
-    boxplot = ax2.boxplot(
+    boxprops = {"color": (0, 0, 0), "linewidth": 2, "alpha": 0.5}
+    medianprops = {"color": (0, 0, 0), "linewidth": 2}
+    whiskerprops = {"color": (0, 0, 0), "linewidth": 2, "alpha": 0.5}
+    capprops = {"color": (0, 0, 0), "linewidth": 2, "alpha": 0.5}
+    boxplot = ax3.boxplot(
         [
             JASON3_DRIFT_CORRECTED_MINUS_ARGO_PLUS_ABS_OBD
             - odb_anelastic_elastic_correction[0]
@@ -289,7 +276,7 @@ def add_reference_values_and_altimetry(df: DataFrame, ax2: Axes, data: dict) -> 
             - odb_anelastic_elastic_correction[0]
             + JASON3_DRIFT_CORRECTED_MINUS_ARGO_PLUS_ABS_OBD_UNCERTAINTY,
         ],
-        positions=[4],
+        positions=[0],
         showfliers=False,
         patch_artist=True,
         boxprops=boxprops,
@@ -297,7 +284,137 @@ def add_reference_values_and_altimetry(df: DataFrame, ax2: Axes, data: dict) -> 
         whiskerprops=whiskerprops,
         capprops=capprops,
     )
-    boxplot["boxes"][0].set_facecolor(REFERENCE_RED)
+    boxplot["boxes"][0].set_facecolor((0, 0, 0))
+
+    box_mean = JASON3_DRIFT_CORRECTED_MINUS_ARGO_PLUS_ABS_OBD - odb_anelastic_elastic_correction[0]
+
+    draw_arrows(df=df, box_mean=box_mean, ax2=ax2, ax3=ax3)
+
+
+def draw_arrows(df: DataFrame, box_mean: float, ax2: Axes, ax3: Axes) -> None:
+    """
+    Draws main vertical lines on the altimetry subplot.
+    """
+
+    ref_y_elastic = numpy.median(
+        df[df["Anelasticity"] == ANELASTICITY_OPTIONS[0]]["ocean_mean_trend_step_5"].values
+    )
+
+    ref_y = numpy.median(
+        df[df["Anelasticity"] == ANELASTICITY_OPTIONS[-1]]["ocean_mean_trend_step_5"].values
+    )
+
+    ax2_pos = ax2.get_position()
+    ax3_pos = ax3.get_position()
+    ref_xy_fig = ax2.figure.transFigure.inverted().transform(ax2.transData.transform((3, ref_y)))
+    ax3_left_fig = (ax3_pos.x0, ref_xy_fig[1])
+    ax2.figure.lines.append(
+        Line2D(
+            [ref_xy_fig[0], ax3_left_fig[0]],
+            [ref_xy_fig[1], ax3_left_fig[1]],
+            linestyle=":",
+            color=REFERENCE_RED,
+            linewidth=2,
+            zorder=100,
+            transform=ax2.figure.transFigure,
+        )
+    )
+    ref_xy_fig = ax2.figure.transFigure.inverted().transform(
+        ax2.transData.transform((0, ref_y_elastic))
+    )
+    ax3_left_fig = (ax3_pos.x0, ref_xy_fig[1])
+    ax2.figure.lines.append(
+        Line2D(
+            [ref_xy_fig[0], ax3_left_fig[0]],
+            [ref_xy_fig[1], ax3_left_fig[1]],
+            linestyle=":",
+            color="gray",
+            linewidth=2,
+            zorder=100,
+            transform=ax2.figure.transFigure,
+        )
+    )
+
+    ref_xy_prime_fig = ax3.figure.transFigure.inverted().transform(
+        ax3.transData.transform((0, box_mean))
+    )
+    ax2_right_fig = (ax2_pos.x1, ref_xy_prime_fig[1])
+    ax3.figure.lines.append(
+        Line2D(
+            [ref_xy_prime_fig[0], ax2_right_fig[0]],
+            [ref_xy_prime_fig[1], ax2_right_fig[1]],
+            linestyle=":",
+            color=REFERENCE_RED,
+            linewidth=2,
+            zorder=100,
+            transform=ax3.figure.transFigure,
+        )
+    )
+
+    ref_xy_fig = ax3.figure.transFigure.inverted().transform(ax2.transData.transform((3, ref_y)))
+    ref_xy_elastic_fig = ax3.figure.transFigure.inverted().transform(
+        ax2.transData.transform((0, ref_y_elastic))
+    )
+    box_xy_fig = ax3.figure.transFigure.inverted().transform(ax3.transData.transform((0, box_mean)))
+
+    x_arrow = (ax2_pos.x1 + ax3_pos.x0) / 2
+
+    draw_vertical_arrow(
+        fig=ax3.figure, x=x_arrow - 0.03, y1=ref_xy_fig[1], y2=box_xy_fig[1], color=REFERENCE_RED
+    )
+    ax3.figure.text(
+        x_arrow - 0.02,
+        (ref_xy_fig[1] + box_xy_fig[1]) / 2,
+        f"${box_mean - ref_y:.2f}$ mm/yr",
+        fontsize=FONTSIZE_PANEL_TITLES - 2,
+        color=REFERENCE_RED,
+        va="center",
+        ha="left",
+        zorder=200,
+    )
+
+    draw_vertical_arrow(
+        fig=ax3.figure, x=x_arrow - 0.05, y1=ref_xy_elastic_fig[1], y2=box_xy_fig[1], color="gray"
+    )
+    ax3.figure.text(
+        x_arrow - 0.04,
+        (ref_xy_elastic_fig[1] + box_xy_fig[1]) / 2,
+        f"${box_mean - ref_y_elastic:.2f}$ mm/yr",
+        fontsize=FONTSIZE_PANEL_TITLES - 2,
+        color="black",
+        va="center",
+        ha="left",
+        zorder=200,
+    )
+
+    ax3.figure.text(
+        x_arrow,
+        (ref_xy_fig[1] + box_xy_fig[1]) / 2 + 0.05,
+        "Sea level\nMisclosure",
+        fontsize=FONTSIZE_PANEL_TITLES,
+        color="black",
+        va="center",
+        ha="center",
+        zorder=200,
+    )
+
+
+def draw_vertical_arrow(fig, x, y1, y2, color):
+    """
+    Draws main vertical line.
+    """
+
+    fig.lines.append(
+        Line2D(
+            [x, x],
+            [y1, y2],
+            linestyle=":",
+            color=color,
+            linewidth=2,
+            zorder=150,
+            transform=fig.transFigure,
+        )
+    )
 
 
 def draw_violin_and_boxplot(
@@ -306,6 +423,7 @@ def draw_violin_and_boxplot(
     """
     Draws a single violin and boxplot on the given axes.
     """
+
     violins = ax.violinplot(
         dataset=cloud_data,
         positions=[x_value],
@@ -320,10 +438,10 @@ def draw_violin_and_boxplot(
 
         body.set_color(color)
 
-    boxprops = {"color": color, "linewidth": 2, "alpha": 0.5}
+    boxprops = {"color": color, "linewidth": 2, "alpha": 0.8}
     medianprops = {"color": color, "linewidth": 2}
-    whiskerprops = {"color": color, "linewidth": 2, "alpha": 0.5}
-    capprops = {"color": color, "linewidth": 2, "alpha": 0.5}
+    whiskerprops = {"color": color, "linewidth": 2, "alpha": 0.8}
+    capprops = {"color": color, "linewidth": 2, "alpha": 0.8}
 
     boxplot = ax.boxplot(
         cloud_data,

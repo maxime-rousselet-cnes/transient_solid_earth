@@ -128,16 +128,34 @@
             ]
         },
         "rheological_parameters": {
-            "long_term_anelasticity": {
-                "eta_m": {
-                    "ASTHENOSPHERE": [
+            "short_term_anelasticity": {
+                "alpha": {
+                    "MANTLE": [
                         [
-                            3e19
+                            0.21
+                        ],
+                        [
+                            0.25
+                        ],
+                        [
+                            0.29
+                        ]
+                    ]
+                },
+                "asymptotic_mu_ratio": {
+                    "MANTLE": [
+                        [
+                            0.2
+                        ],
+                        [
+                            0.1
+                        ],
+                        [
+                            0.15
                         ]
                     ]
                 }
-            }
-        }
+            }}
     },
     "load_model_variabilities": {},
     "parallel_computing": {

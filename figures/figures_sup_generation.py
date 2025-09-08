@@ -775,6 +775,7 @@ def generate_figure_sup_8(figsize: tuple[float, float] = (8, 16)) -> None:
             s=SIZE,
             marker="*",
             color=REFERENCE_RED,
+            zorder=100,
         )
 
     ax1.legend(frameon=False, fontsize=LABELSIZE)
@@ -896,6 +897,7 @@ def generate_figure_sup_10(figsize: tuple[float, float] = (6, 4)) -> None:
             s=SIZE,
             marker="o" if "modified" in label else "*",
             color=REFERENCE_RED,
+            zorder=100,
         )
 
     ax1.set_ylabel(
@@ -915,14 +917,14 @@ def generate_figure_sup_10(figsize: tuple[float, float] = (6, 4)) -> None:
     fig.savefig(figures_path.joinpath("figure_sup_10.svg"), format="svg")
 
 
-def generate_figure_sup_11(figsize: tuple[float, float] = (6, 2.5)) -> None:
+def generate_figure_sup_11(figsize: tuple[float, float] = (12, 4)) -> None:
     """
     2025's article.
     """
 
     ax1: Axes
     ax2: Axes
-    fig, (ax1, ax2) = subplots(1, 2, figsize=(12, 4), sharex=True)
+    fig, (ax1, ax2) = subplots(1, 2, figsize=figsize, sharex=True)
     data = load_base_model(name="figure_sup_11", path=figures_path)
 
     ax1.plot(

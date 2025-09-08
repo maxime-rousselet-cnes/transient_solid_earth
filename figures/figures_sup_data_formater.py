@@ -589,7 +589,7 @@ def preprocess_figure_sup_8() -> None:
     """
 
     all_metrics = ["ocean_mean_trend_step_" + str(i + 1) for i in range(5)]
-    data, parameters = preprocess_dataframe(
+    data, _ = preprocess_dataframe(
         metrics=all_metrics,
         filter_wanted_values=DEFAULT_FILTER_WANTED_VALUES,
         filter_unwanted_values=DEFAULT_FILTER_UNWANTED_VALUES,

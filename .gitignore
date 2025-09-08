@@ -5,3 +5,4 @@ __pycache__
 figures/*.json
 figures/*.svg
 figures/*.csv
+multi-viscosity_profile_tests

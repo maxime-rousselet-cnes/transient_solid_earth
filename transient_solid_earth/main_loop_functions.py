@@ -549,7 +549,7 @@ def anelastic_load_model_re_estimation_processing_loop(
         if not is_in_table(table_name="anelastic_load_models", id_to_check=anelastic_load_model_id):
 
             # Memorizes the anelastic pole tide correction series before the normalization loop.
-            c_2_1_pt_se_complex, s_2_1_pt_se_complex = pole_motion_correction(
+            stokes_to_ewh_factor, c_2_1_pt_se_complex, s_2_1_pt_se_complex = pole_motion_correction(
                 m_1=elastic_load_model.side_products.time_dependent_m_1,
                 m_2=elastic_load_model.side_products.time_dependent_m_2,
                 love_numbers=anelastic_love_numbers,
@@ -573,8 +573,8 @@ def anelastic_load_model_re_estimation_processing_loop(
             ) = anelastic_load_model_re_estimation_processing_steps(
                 elastic_love_numbers=elastic_love_numbers,
                 anelastic_love_numbers=anelastic_love_numbers,
-                c_2_1_pt_se_complex=c_2_1_pt_se_complex,
-                s_2_1_pt_se_complex=s_2_1_pt_se_complex,
+                c_2_1_pt_se_complex=stokes_to_ewh_factor * c_2_1_pt_se_complex,
+                s_2_1_pt_se_complex=stokes_to_ewh_factor * s_2_1_pt_se_complex,
                 save_informations=(
                     elastic_load_model,
                     anelastic_load_model_id,

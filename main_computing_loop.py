@@ -30,9 +30,9 @@ from transient_solid_earth import (
     tables_path,
 )
 
-CLEAR = {"love_numbers": False, "generate_elastic_load_models": True}
+CLEAR = {"love_numbers": False, "generate_elastic_load_models": False}
 CLEAR["interpolate_love_numbers"] = CLEAR["generate_elastic_load_models"]
-CLEAR["anelastic_load_models"] = True
+CLEAR["anelastic_load_models"] = False
 
 if __name__ == "__main__":
 

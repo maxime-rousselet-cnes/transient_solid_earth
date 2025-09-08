@@ -2,6 +2,7 @@
 Contains figrue functions, figure data functions and figure data files.
 """
 
+from .figure_love_numbers import love_numbers_plot
 from .figures_data_formater import (
     preprocess_figure_1,
     preprocess_figure_2,
@@ -42,6 +43,7 @@ from .figures_sup_generation import (
 )
 
 objects = [
+    love_numbers_plot,
     preprocess_figure_1,
     preprocess_figure_2,
     preprocess_figure_3,

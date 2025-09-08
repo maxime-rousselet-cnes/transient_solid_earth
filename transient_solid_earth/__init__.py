@@ -50,6 +50,7 @@ from .parameters import (
 from .paths import (
     SolidEarthModelPart,
     anelastic_load_models_path,
+    anelastic_pole_motion_path,
     data_path,
     elastic_load_models_path,
     harmonic_geoid_deformation_trends_path,
@@ -111,6 +112,7 @@ objects = [
     load_parameters,
     SolidEarthModelPart,
     anelastic_load_models_path,
+    anelastic_pole_motion_path,
     data_path,
     elastic_load_models_path,
     harmonic_geoid_deformation_trends_path,
