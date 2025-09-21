@@ -841,7 +841,7 @@ def generate_figure_sup_9(figsize: tuple[float, float] = (6, 4)) -> None:
     fig.savefig(figures_path.joinpath("figure_sup_9.svg"), format="svg")
 
 
-def generate_figure_sup_10(figsize: tuple[float, float] = (6, 4)) -> None:
+def generate_figure_sup_10(figsize: tuple[float, float] = (7, 4)) -> None:
     """
     2025's article.
     """

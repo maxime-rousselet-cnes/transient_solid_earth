@@ -62,7 +62,7 @@ from .paths import (
     logs_subpaths,
     tables_path,
 )
-from .pole_tide import elastic_pole_tide_correction_back
+from .pole_tide import elastic_pole_tide_correction_back, pole_motion_correction
 from .separators import (
     LAYERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
@@ -124,6 +124,7 @@ objects = [
     logs_subpaths,
     tables_path,
     elastic_pole_tide_correction_back,
+    pole_motion_correction,
     LAYERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAME_FROM_PARAMETERS_SEPARATOR,
     SOLID_EARTH_NUMERICAL_MODEL_PART_NAMES_SEPARATOR,

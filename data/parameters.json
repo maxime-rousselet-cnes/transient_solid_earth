@@ -50,7 +50,7 @@
             "leakage_correction_iterations": 1,
             "renormalize_recent_trend": true,
             "initial_past_trend_factor": 1.22,
-            "anti_Gibbs_effect_factor": 1,
+            "anti_Gibbs_effect_factor": 4,
             "spline_time_years": 50,
             "initial_plateau_date": -500,
             "ewh_threshold": 12.0,
@@ -79,7 +79,7 @@
                 "pole_secular_term_trend_start_date": 1900,
                 "pole_secular_term_trend_end_date": 1978,
                 "ramp": false,
-                "filter_wobble": true,
+                "filter_wobble": false,
                 "remove_mean_pole": true,
                 "wobble_filtering_kernel_length": 50
             },
@@ -92,7 +92,7 @@
         },
         "signature": {
             "opposite_load_on_continents": false,
-            "n_max": 90,
+            "n_max": 5,
             "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
         },
         "options": {
@@ -132,10 +132,10 @@
                 "alpha": {
                     "MANTLE": [
                         [
-                            0.21
+                            0.22
                         ],
                         [
-                            0.25
+                            0.26
                         ],
                         [
                             0.29
