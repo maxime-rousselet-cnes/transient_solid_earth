@@ -48,12 +48,9 @@ def worker_interpolate_love_numbers(worker_information: WorkerInformation) -> No
     for degree_sub_path in load_path.iterdir():
 
         degree = int(float(degree_sub_path.name))
-
-        if degree <= degree_new_values[-1]:
-
-            degrees += [degree]
-            periods[degree] = get_periods(path=degree_sub_path)
-            inputs[degree] = load_complex_array(path=degree_sub_path)
+        degrees += [degree]
+        periods[degree] = get_periods(path=degree_sub_path)
+        inputs[degree] = load_complex_array(path=degree_sub_path)
 
     degrees.sort()
     interpolated_on_periods = []

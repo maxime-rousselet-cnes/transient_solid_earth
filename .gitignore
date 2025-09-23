@@ -6,3 +6,5 @@ figures/*.json
 figures/*.svg
 figures/*.csv
 multi-viscosity_profile_tests
+outputs_backup
+outputs_test

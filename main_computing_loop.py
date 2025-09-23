@@ -32,7 +32,7 @@ from transient_solid_earth import (
 
 CLEAR = {"love_numbers": False, "generate_elastic_load_models": False}
 CLEAR["interpolate_love_numbers"] = CLEAR["generate_elastic_load_models"]
-CLEAR["anelastic_load_models"] = False
+CLEAR["anelastic_load_models"] = True
 
 DO_LOAD = False
 
@@ -105,45 +105,47 @@ if __name__ == "__main__":
             timeout=interpolation_timeout,
         )
 
-        if DO_LOAD:
+        if not DO_LOAD:
 
-            # Loops on interpolated elastic load models.
-            for (
-                periods_id,
-                elastic_load_model_ids,
-            ) in load_model_ids_per_interpolation_basis_ids.items():
+            continue
 
-                # Memorizes elastic Love numbers.
-                elastic_love_numbers = load_complex_array(
-                    path=interpolated_love_numbers_path(
-                        periods_id=periods_id, rheological_model_id=elastic_model_id
-                    )
+        # Loops on interpolated elastic load models.
+        for (
+            periods_id,
+            elastic_load_model_ids,
+        ) in load_model_ids_per_interpolation_basis_ids.items():
+
+            # Memorizes elastic Love numbers.
+            elastic_love_numbers = load_complex_array(
+                path=interpolated_love_numbers_path(
+                    periods_id=periods_id, rheological_model_id=elastic_model_id
+                )
+            )
+
+            for elastic_load_model_id in elastic_load_model_ids:
+
+                elastic_load_model = elastic_load_models[elastic_load_model_id]
+                elastic_pole_tide_correction_back(
+                    elastic_load_model=elastic_load_model,
+                    elastic_love_numbers=elastic_love_numbers,
                 )
 
-                for elastic_load_model_id in elastic_load_model_ids:
+            # Loops on rheological models.
+            for rheological_model_id in rheological_model_ids:
 
-                    elastic_load_model = elastic_load_models[elastic_load_model_id]
-                    elastic_pole_tide_correction_back(
-                        elastic_load_model=elastic_load_model,
-                        elastic_love_numbers=elastic_love_numbers,
-                    )
-
-                # Loops on rheological models.
-                for rheological_model_id in rheological_model_ids:
-
-                    # Main anelastic self-coherent re-estimation for the given list of elastic load
-                    # models.
-                    anelastic_load_model_re_estimation_processing_loop(
-                        elastic_load_models=[
-                            elastic_load_model
-                            for elastic_load_model_id, elastic_load_model in elastic_load_models.items()
-                            if elastic_load_model_id in elastic_load_model_ids
-                        ],
-                        elastic_love_numbers=elastic_love_numbers,
-                        periods_id=periods_id,
-                        rheological_model_id=rheological_model_id,
-                        parallel_computing_parameters=parameters.parallel_computing,
-                    )
+                # Main anelastic self-coherent re-estimation for the given list of elastic load
+                # models.
+                anelastic_load_model_re_estimation_processing_loop(
+                    elastic_load_models=[
+                        elastic_load_model
+                        for elastic_load_model_id, elastic_load_model in elastic_load_models.items()
+                        if elastic_load_model_id in elastic_load_model_ids
+                    ],
+                    elastic_love_numbers=elastic_love_numbers,
+                    periods_id=periods_id,
+                    rheological_model_id=rheological_model_id,
+                    parallel_computing_parameters=parameters.parallel_computing,
+                )
 
     # Wait for processes to end naturally.
     os._exit(status=0)

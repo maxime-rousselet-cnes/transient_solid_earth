@@ -50,7 +50,7 @@
             "leakage_correction_iterations": 1,
             "renormalize_recent_trend": true,
             "initial_past_trend_factor": 1.22,
-            "anti_Gibbs_effect_factor": 4,
+            "anti_Gibbs_effect_factor": 0,
             "spline_time_years": 50,
             "initial_plateau_date": -500,
             "ewh_threshold": 12.0,
@@ -92,7 +92,7 @@
         },
         "signature": {
             "opposite_load_on_continents": false,
-            "n_max": 5,
+            "n_max": 90,
             "file": "TREND_GRACE(-FO)_MSSA_2003_2022_NoGIA_PELTIER_ICE6G-D.csv"
         },
         "options": {
@@ -127,86 +127,7 @@
                 "Benjamin_Q_Resovsky"
             ]
         },
-        "rheological_parameters": {
-            "short_term_anelasticity": {
-                "asymptotic_mu_ratio": {
-                    "MANTLE": [
-                        [
-                            0.1
-                        ],
-                        [
-                            0.11
-                        ],
-                        [
-                            0.12
-                        ],
-                        [
-                            0.13
-                        ],
-                        [
-                            0.14
-                        ],
-                        [
-                            0.15
-                        ],
-                        [
-                            0.16
-                        ],
-                        [
-                            0.17
-                        ],
-                        [
-                            0.18
-                        ],
-                        [
-                            0.19
-                        ],
-                        [
-                            0.2
-                        ],
-                        [
-                            0.21
-                        ],
-                        [
-                            0.22
-                        ],
-                        [
-                            0.23
-                        ],
-                        [
-                            0.24
-                        ],
-                        [
-                            0.25
-                        ],
-                        [
-                            0.26
-                        ],
-                        [
-                            0.27
-                        ],
-                        [
-                            0.28
-                        ],
-                        [
-                            0.29
-                        ],
-                        [
-                            0.3
-                        ]
-                    ]
-                }
-            },
-            "long_term_anelasticity": {
-                "eta_m": {
-                    "ASTHENOSPHERE": [
-                        [
-                            3e19
-                        ]
-                    ]
-                }
-            }
-        }
+        "rheological_parameters": {}
     },
     "load_model_variabilities": {},
     "parallel_computing": {
