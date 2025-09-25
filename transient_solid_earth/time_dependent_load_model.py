@@ -37,7 +37,9 @@ def generate_time_dependent_elastic_load_model(
         m_2=elastic_load_model.side_products.time_dependent_m_2,
         love_numbers=elastic_love_numbers,
     )
-    recent_harmonics[:, 2, 1] += numpy.real(ifft(stokes_to_ewh_factor * c_2_1_elastic_pole_tide))[
+    recent_harmonics[:, 2, 1] += numpy.real(
+        ifft(stokes_to_ewh_factor * c_2_1_elastic_pole_tide)
+    )[  # TODO.
         elastic_load_model.side_products.recent_trend_indices
     ]
     recent_harmonics[:, -3, -2] += numpy.real(ifft(stokes_to_ewh_factor * s_2_1_elastic_pole_tide))[

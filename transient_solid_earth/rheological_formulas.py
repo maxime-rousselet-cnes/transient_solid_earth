@@ -192,29 +192,63 @@ def f_attenuation_computing(
     """
 
     if use_bounded_attenuation_functions:
+
         with numpy.errstate(invalid="ignore", divide="ignore"):
+
+            y_tab = []
+
+            for alpha, omega_m, tau_m in zip(
+                variables["alpha"], variables["omega_m"], variables["tau_m"]
+            ):
+
+                y, _, infodict = integrate.quad(
+                    func=integrand,
+                    a=numpy.log(1.0 / omega_m),
+                    b=numpy.log(tau_m),
+                    args=(omega, alpha),
+                    complex_func=True,
+                    full_output=1,
+                )
+                y_tab += [y]
+                # Show integration basis:
+                """
+                print(
+                    numpy.unique(
+                        numpy.sort(
+                            numpy.concatenate(
+                                [
+                                    numpy.concatenate(
+                                        [
+                                            infodict["real"][0]["alist"],
+                                            [infodict["real"][0]["blist"][-1]],
+                                        ]
+                                    ),
+                                    numpy.concatenate(
+                                        [
+                                            infodict["imag"][0]["alist"],
+                                            [infodict["imag"][0]["blist"][-1]],
+                                        ]
+                                    ),
+                                ]
+                            )
+                        )
+                    )
+                )
+                """
+
             return numpy.array(
                 object=[
-                    (
-                        0.0
-                        if omega_m <= 0.0 or tau_m <= 0.0
-                        else -integrate.quad(
-                            func=integrand,
-                            a=numpy.log(1.0 / omega_m),
-                            b=numpy.log(tau_m),
-                            args=(omega, alpha),
-                            complex_func=True,
-                        )[0]
-                    )
-                    for alpha, omega_m, tau_m in zip(
-                        variables["alpha"], variables["omega_m"], variables["tau_m"]
-                    )
+                    0.0 if omega_m <= 0.0 or tau_m <= 0.0 else -y
+                    for y, omega_m, tau_m in zip(y_tab, variables["omega_m"], variables["tau_m"])
                 ]
             )
     else:
+
         high_frequency_domain: numpy.ndarray[bool] = frequency >= variables["omega_m"]
         omega_0 = 1.0 / frequency_unit  # (Unitless frequency).
+
         with numpy.errstate(invalid="ignore", divide="ignore"):
+
             return numpy.nan_to_num(  # Alpha or omega_m may be equal to 0.0, meaning no attenuation
                 # should be taken into account.
                 x=((2.0 / numpy.pi) * numpy.log(frequency / omega_0) + 1.0j) * high_frequency_domain
@@ -242,6 +276,7 @@ def delta_mu_computing(
     """
 
     with numpy.errstate(invalid="ignore", divide="ignore"):
+
         return numpy.nan_to_num(  # q_mu may be infinite, meaning no attenuation should be taken
             # into account.
             x=(mu_0 / q_mu) * f,
@@ -255,6 +290,7 @@ def find_tau_m(omega_m: float, alpha: float, asymptotic_mu_ratio: float, q_mu: f
     """
 
     with numpy.errstate(invalid="ignore"):
+
         return (
             0.0
             if round(number=asymptotic_mu_ratio, ndigits=ASYMPTOTIC_MU_RATIO_DECIMALS) == 1.0

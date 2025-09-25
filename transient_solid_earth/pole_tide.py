@@ -21,6 +21,9 @@ def pole_motion_correction(
 
     frequencial_m1: numpy.ndarray[complex] = fft(m_1)
     frequencial_m2: numpy.ndarray[complex] = fft(m_2)
+    stokes_to_ewh_factor = STOKES_TO_EWH_CONSTANT / (
+        1.0 + love_numbers[:, 1, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
+    )  # Divides by 1 + k'.
 
     # Gets element in position 1 for degree 2. Solid Earth (SE) pole Tide (PT).
     phi_se_pt_complex: numpy.ndarray[complex] = (
@@ -30,21 +33,17 @@ def pole_motion_correction(
     )
 
     # C_PT_SE_2_1, S_PT_SE_2_1.
-    stokes_to_ewh_factor = STOKES_TO_EWH_CONSTANT / (
-        1.0 + love_numbers[:, 1, BoundaryCondition.LOAD.value, Direction.POTENTIAL.value]
-    )  # Divides by 1 + k'.
-
     coherent_pole_motion = numpy.array(object=ifft(phi_se_pt_complex), dtype=numpy.complex64)
 
     return (
         stokes_to_ewh_factor,
         fft(coherent_pole_motion.real),  # C_2_1 frequencial correction.
-        fft(coherent_pole_motion.imag),  # S_2_1 frequencial correction.
+        fft(-coherent_pole_motion.imag),  # S_2_1 frequencial correction.
     )
 
 
-def elastic_pole_tide_correction_back(
-    elastic_load_model: ElasticLoadModel, elastic_love_numbers: numpy.ndarray
+def iers_pole_tide_correction_back(
+    elastic_load_model: ElasticLoadModel, elastic_love_numbers: numpy.ndarray[float]
 ) -> None:
     """
     Performs back the IERS elastic pole tide correction for future self-coherent time-dependent
@@ -57,11 +56,11 @@ def elastic_pole_tide_correction_back(
         love_numbers=elastic_love_numbers,
     )
     base_products = elastic_load_model.base_products
-    base_products.load_model_harmonic_component[2, 1] += get_trend_from_complex_signal(
-        signal=stokes_to_ewh_factor * c_2_1_elastic_pole_tide,
+    base_products.load_model_harmonic_component[2, 1] -= get_trend_from_complex_signal(
+        signal=stokes_to_ewh_factor * c_2_1_elastic_pole_tide,  # TODO.
         elastic_load_model=elastic_load_model,
     )
-    base_products.load_model_harmonic_component[-3, -2] += get_trend_from_complex_signal(
+    base_products.load_model_harmonic_component[-3, -2] -= get_trend_from_complex_signal(
         signal=stokes_to_ewh_factor * s_2_1_elastic_pole_tide,
         elastic_load_model=elastic_load_model,
     )

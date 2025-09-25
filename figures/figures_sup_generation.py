@@ -466,13 +466,13 @@ def generate_figure_sup_5(figsize: tuple[float, float] = (12, 10)) -> None:
     fig.savefig(figures_path.joinpath("figure_sup_5.svg"), format="svg", dpi=300)
 
 
-def generate_figure_sup_6(figsize: tuple[float, float] = (18, 7)) -> None:
+def generate_figure_sup_6(figsize: tuple[float, float] = (18, 7), use_backup: bool = True) -> None:
     """
     2025's article.
     """
 
     # dates, lower_bound, mean_curb, upper_bound, latitudes, longitudes, mask, grid.
-    data = load_base_model(name="figure_sup_6", path=figures_path)
+    data = load_base_model(name="figure_sup_6" + ("b" if not use_backup else ""), path=figures_path)
     fig = figure(figsize=figsize)
     axes: list[GeoAxes] = [
         fig.add_axes([0.06, 0.55, 0.26, 0.4], projection=Robinson(central_longitude=0)),
@@ -589,7 +589,7 @@ def generate_figure_sup_6(figsize: tuple[float, float] = (18, 7)) -> None:
         fontsize=FONTSIZE_PANEL_TITLES,
         rotation=45,
     )
-    fig.savefig(figures_path.joinpath("figure_sup_6.svg"), format="svg", dpi=300)
+    fig.savefig(figures_path.joinpath("figure_sup_6b.svg"), format="svg", dpi=300)  # TODO.
 
 
 def sub_function_figure_sup_7(

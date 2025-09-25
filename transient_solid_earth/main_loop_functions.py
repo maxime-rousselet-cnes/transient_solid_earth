@@ -294,8 +294,8 @@ def anelastic_load_model_re_estimation_processing_steps(
 
         if elastic_load_model.load_model_parameters.history.pole.use:
 
-            period_dependent_harmonic_load_model_steps[1][:, 2, 1] -= c_2_1_pt_se_complex
-            period_dependent_harmonic_load_model_steps[1][:, -3, -2] -= s_2_1_pt_se_complex
+            period_dependent_harmonic_load_model_steps[1][:, 2, 1] += c_2_1_pt_se_complex  # TODO.
+            period_dependent_harmonic_load_model_steps[1][:, -3, -2] += s_2_1_pt_se_complex
 
         # Step 3: All degrees re-estimated using the potential load Love number.
         period_dependent_harmonic_load_model_steps[2] = harmonic_load_model_re_estimation(

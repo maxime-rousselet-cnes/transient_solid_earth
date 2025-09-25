@@ -508,7 +508,7 @@ def preprocess_figure_sup_6(use_backup: bool = True) -> None:
 
     save_base_model(
         obj=obj,
-        name="figure_sup_6",
+        name="figure_sup_6" + ("b" if not use_backup else ""),
         path=figures_path,
     )
 
